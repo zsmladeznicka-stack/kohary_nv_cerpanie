@@ -424,14 +424,10 @@
       <div class="brand-sub">Google Sheets · Súkromný prístup</div>
     </div>
 
-    <!-- Auth — handled automatically by Apps Script -->
+    <!-- Auth -->
     <div id="authArea">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <div class="spinner" id="authSpinner"></div>
-        <div class="signin-label" id="authStatus">Prihlasujem…</div>
-      </div>
-      <button class="google-signin-btn" id="retryAuthBtn" onclick="initAppScriptAuth()" style="display:none">
-        Skúsiť znova
+      <button class="google-signin-btn" id="googleSignInBtn" onclick="startSignIn()">
+        Prihlásiť sa cez Google
       </button>
     </div>
 
@@ -539,81 +535,72 @@ let lastSheetTitle   = '';   // active tab name from last fetch
 
 // ── SETUP ────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
-  // Auth handled by Apps Script — get token and user info from backend
-  initAppScriptAuth();
+  initGoogleAuth();
 });
 
 // saveClientId removed — CLIENT_ID is hardcoded
 
 // resetClientId removed — CLIENT_ID is hardcoded
 
-// ── APPS SCRIPT AUTH ─────────────────────────────────────
+// ── GOOGLE AUTH ──────────────────────────────────────────
 
-function authError(msg) {
-  document.getElementById('authStatus').textContent = msg;
-  document.getElementById('authSpinner').style.display = 'none';
-  document.getElementById('retryAuthBtn').style.display = 'block';
-}
+const OAUTH_SCOPES = [
+  'https://www.googleapis.com/auth/drive.readonly',
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/userinfo.profile',
+  'https://www.googleapis.com/auth/userinfo.email'
+].join(' ');
 
-function initAppScriptAuth() {
-  document.getElementById('authStatus').textContent = 'Prihlasujem…';
-  document.getElementById('authSpinner').style.display = 'block';
-  document.getElementById('retryAuthBtn').style.display = 'none';
-
-  if (typeof google === 'undefined' || typeof google.script === 'undefined') {
-    authError('Chyba: google.script nie je dostupný. Otvorte cez Apps Script URL.');
-    return;
+function initGoogleAuth() {
+  // Check for token in URL hash (returning from OAuth redirect)
+  if (window.location.hash && window.location.hash.includes('access_token')) {
+    handleOAuthCallback();
   }
-
-  // Step 1: ping to verify google.script.run works at all
-  var timeout = setTimeout(function() {
-    authError('Časový limit vypršal — server neodpovedá. Skúste obnoviť stránku.');
-  }, 10000);
-
-  google.script.run
-    .withSuccessHandler(function(pong) {
-      clearTimeout(timeout);
-      if (pong !== 'pong') {
-        authError('Neočakávaná odpoveď zo servera: ' + pong);
-        return;
-      }
-      // Step 2: get access token
-      document.getElementById('authStatus').textContent = 'Získavam token…';
-      google.script.run
-        .withSuccessHandler(function(result) {
-          if (!result || result.error) {
-            authError('Chyba tokenu: ' + (result ? result.error : 'žiadna odpoveď'));
-            return;
-          }
-          accessToken = result.token;
-          // Step 3: get user info
-          document.getElementById('authStatus').textContent = 'Načítavam profil…';
-          google.script.run
-            .withSuccessHandler(function(profile) {
-              document.getElementById('authSpinner').style.display = 'none';
-              showUser(profile);
-              showStatus('Prihlásený — načítavam priečinky…', 'loading');
-              loadFolders();
-            })
-            .withFailureHandler(function() {
-              document.getElementById('authSpinner').style.display = 'none';
-              showUser({ name: 'Používateľ', email: '' });
-              showStatus('Prihlásený — načítavam priečinky…', 'loading');
-              loadFolders();
-            })
-            .getUserInfo();
-        })
-        .withFailureHandler(function(err) {
-          authError('Chyba getAccessToken: ' + (err.message || 'neznáma'));
-        })
-        .getAccessToken();
-    })
-    .withFailureHandler(function(err) {
-      clearTimeout(timeout);
-      authError('Chyba ping: ' + (err.message || 'neznáma chyba'));
-    })
-    .ping();
 }
+
+function startSignIn() {
+  const redirectUri = window.location.origin + window.location.pathname;
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: 'token',
+    scope: OAUTH_SCOPES,
+    prompt: 'select_account'
+  });
+  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+}
+
+async function handleOAuthCallback() {
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  const token = params.get('access_token');
+  const error = params.get('error');
+
+  // Clean URL hash
+  history.replaceState(null, '', window.location.pathname);
+
+  if (error) { showStatus('Chyba prihlásenia: ' + error, 'error'); return; }
+  if (!token) return;
+
+  accessToken = token;
+
+  try {
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+    const profile = await r.json();
+    showUser(profile);
+  } catch(e) {
+    showUser({ name: 'Používateľ', email: '' });
+  }
+  showStatus('Prihlásený — načítavam priečinky…', 'loading');
+  loadFolders();
+}
+
+function authError(msg) {}
+function initAppScriptAuth() {}
+
+
 function showUser(profile) {
   document.getElementById('authArea').style.display = 'none';
   document.getElementById('userArea').style.display = 'block';
@@ -625,7 +612,6 @@ function showUser(profile) {
 }
 
 function signOut() {
-  // In Apps Script, signing out means revoking and reloading
   if (accessToken) {
     fetch('https://oauth2.googleapis.com/revoke?token=' + accessToken, { method: 'POST' });
   }
@@ -638,7 +624,7 @@ function signOut() {
   resetSelects();
   disableInputs();
   document.getElementById('zapisBtn').disabled = true;
-  document.getElementById('preview').innerHTML = `<div class="empty-state"><div class="empty-glyph">▦▦▦</div><p>Odhlásený. Obnovte stránku pre nové prihlásenie.</p></div>`;
+  document.getElementById('preview').innerHTML = `<div class="empty-state"><div class="empty-glyph">▦▦▦</div><p>Odhlásený. Prihláste sa znova.</p></div>`;
   document.getElementById('employeeBlockWrap').innerHTML = '';
   document.getElementById('printMeta').textContent = '';
   document.getElementById('employeeDisplay').value = '';
