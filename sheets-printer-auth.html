@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sk" data-v="2">
+<html lang="sk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -989,6 +989,9 @@ async function zapisatCerpanie() {
     showStatus(`✓ Čerpanie zapísané do ${lastIncludedRows.length} riadkov (stĺpce J–L).`, 'ok');
     btn.textContent = '✓ Zapísané';
     btn.disabled = true;
+
+    // Refetch data to reflect new values from sheet
+    await fetchRows();
 
   } catch(e) {
     let msg = e.message;
