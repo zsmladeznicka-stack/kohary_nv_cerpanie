@@ -465,7 +465,7 @@
     <div class="field-group">
       <label class="field-label">Zamestnanec (priečinok)</label>
       <div id="folderSelectWrap">
-        <select class="field-select" id="folderSelect" disabled onchange="onFolderChange()">
+        <select class="field-select" id="folderSelect" disabled>
           <option value="">— Najprv sa prihláste —</option>
         </select>
       </div>
@@ -474,7 +474,7 @@
     <div class="field-group">
       <label class="field-label">Tabuľka (súbor)</label>
       <div id="sheetSelectWrap">
-        <select class="field-select" id="sheetSelect" disabled onchange="onSheetChange()">
+        <select class="field-select" id="sheetSelect" disabled>
           <option value="">— Vyberte zamestnanaca —</option>
         </select>
       </div>
@@ -685,6 +685,7 @@ async function loadFolders() {
       folderSel.appendChild(opt);
     });
     folderSel.disabled = false;
+    folderSel.addEventListener('change', onFolderChange);
     showStatus(`✓ Načítaných ${folders.length} zamestnancov.`, 'ok');
 
   } catch(e) {
@@ -734,6 +735,7 @@ async function onFolderChange() {
       sheetSel.appendChild(opt);
     });
     sheetSel.disabled = false;
+    sheetSel.addEventListener('change', onSheetChange);
     showStatus(`✓ Načítaných ${sheets.length} tabuliek.`, 'ok');
 
   } catch(e) {
