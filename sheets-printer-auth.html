@@ -288,6 +288,20 @@
     margin-top: 28px; margin-left: 8px;
   }
 
+  /* ── CHECKBOXES & GREYED ROWS ── */
+  .row-greyed td { color: var(--muted) !important; opacity: 0.4; }
+  .row-greyed:hover { background: none !important; }
+
+  .col-check { width: 36px; text-align: center; }
+  .row-checkbox {
+    width: 15px; height: 15px; cursor: pointer;
+    accent-color: var(--accent);
+  }
+  #selectAll { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
+
+  /* hidden in print */
+  .screen-only {}
+
   /* ── SKIPPED ROWS ── */
   .skipped-section {
     margin-top: 28px;
@@ -367,6 +381,9 @@
     .signature-row { gap: 0; }
     .signature-item { font-size: 9pt; color: #111; margin-bottom: 14pt; }
     .signature-line { border-bottom: 1pt solid #999; width: 160pt; margin-top: 20pt; }
+    .screen-only { display: none !important; }
+    .row-greyed { display: none !important; }
+    tbody tr:not(.row-checked-print) { display: none !important; }
     .skipped-section { display: none !important; }
   }
 
@@ -470,12 +487,6 @@
     </div>
 
     <div class="field-group">
-      <label class="field-label">Čísla riadkov</label>
-      <input class="field-input" id="rowNums" type="text" placeholder="2, 5, 7-10, 15" disabled>
-      <span class="field-hint">Riadok 1 = hlavičky. Podporuje rozsahy napr. 3–8.</span>
-    </div>
-
-    <div class="field-group">
       <label class="field-label">Mesiac</label>
       <input class="field-input" id="monthInput" type="text" placeholder="napr. január, február…" disabled>
       <span class="field-hint">Doplní sa do názvu dokumentu.</span>
@@ -488,13 +499,11 @@
 
     <div id="statusMsg" style="display:none"></div>
 
-    <button class="fetch-btn" id="fetchBtn" onclick="fetchRows()" disabled>Načítať riadky →</button>
-
     <button class="zapis-btn" id="zapisBtn" onclick="zapisatCerpanie()" disabled>Zapísať čerpanie →</button>
 
     <hr class="divider">
 
-    <button class="print-btn-side" id="printBtn" onclick="window.print()" disabled>⎙ Tlačiť / Uložiť ako PDF</button>
+    <button class="print-btn-side" id="printBtn" onclick="printDoc()" disabled>⎙ Tlačiť / Uložiť ako PDF</button>
 
   </aside>
 
@@ -504,7 +513,7 @@
         <div class="main-title" id="docDisplayTitle">Podklad pre výplatu premenlivých zložiek mzdy</div>
         <div class="main-meta" id="printMeta"></div>
       </div>
-      <button class="print-btn-top" id="printBtnTop" onclick="window.print()" disabled>⎙ Tlačiť</button>
+      <button class="print-btn-top" id="printBtnTop" onclick="printDoc()" disabled>⎙ Tlačiť</button>
     </div>
 
     <div id="employeeBlockWrap"></div>
@@ -624,6 +633,8 @@ function signOut() {
   resetSelects();
   disableInputs();
   document.getElementById('zapisBtn').disabled = true;
+  document.getElementById('printBtn').disabled = true;
+  document.getElementById('printBtnTop').disabled = true;
   document.getElementById('preview').innerHTML = `<div class="empty-state"><div class="empty-glyph">▦▦▦</div><p>Odhlásený. Prihláste sa znova.</p></div>`;
   document.getElementById('employeeBlockWrap').innerHTML = '';
   document.getElementById('printMeta').textContent = '';
@@ -644,12 +655,12 @@ function resetSelects() {
 }
 
 function enableInputs() {
-  ['sheetTab','rowNums','monthInput','fetchBtn'].forEach(id => document.getElementById(id).disabled = false);
+  ['sheetTab','monthInput'].forEach(id => document.getElementById(id).disabled = false);
   document.getElementById('employeeDisplay').disabled = false;
 }
 
 function disableInputs() {
-  ['sheetTab','rowNums','monthInput','fetchBtn','employeeDisplay'].forEach(id => document.getElementById(id).disabled = true);
+  ['sheetTab','monthInput','employeeDisplay'].forEach(id => document.getElementById(id).disabled = true);
 }
 
 // ── DRIVE FOLDER LOADING ─────────────────────────────────
@@ -736,12 +747,14 @@ function onSheetChange() {
   if (!val) {
     selectedSheetId = null;
     disableInputs();
-    document.getElementById('fetchBtn').disabled = true;
+    document.getElementById('zapisBtn').disabled = true;
+    document.getElementById('printBtn').disabled = true;
+    document.getElementById('printBtnTop').disabled = true;
     return;
   }
   selectedSheetId = val;
   enableInputs();
-  showStatus('Tabuľka vybraná — zadajte čísla riadkov a kliknite Načítať.', 'ok');
+  fetchRows(); // auto-fetch when sheet selected
 }
 
 // ── HELPERS ──────────────────────────────────────────────
@@ -772,19 +785,12 @@ async function fetchRows() {
   if (!selectedSheetId) { showStatus('Vyberte tabuľku.', 'error'); return; }
 
   hideStatus();
-  const tabName  = document.getElementById('sheetTab').value.trim();
-  const rowInput = document.getElementById('rowNums').value.trim();
-  const month    = document.getElementById('monthInput').value.trim();
+  const tabName = document.getElementById('sheetTab').value.trim();
+  const month   = document.getElementById('monthInput').value.trim();
 
-  if (!rowInput) { showStatus('Zadajte aspoň jedno číslo riadku.', 'error'); return; }
-
-  const rows = parseRows(rowInput);
-  if (!rows.length)    { showStatus('Žiadne platné čísla riadkov.', 'error'); return; }
-  if (rows.length>300) { showStatus('Maximálne 300 riadkov naraz.', 'error'); return; }
-
-  const btn = document.getElementById('fetchBtn');
-  btn.disabled = true; btn.textContent = 'Načítavam…';
-  showStatus('Pripájam sa k Google Sheets API…', 'loading');
+  const btn = document.getElementById('zapisBtn');
+  btn.disabled = true;
+  showStatus('Načítavam dáta z tabuľky…', 'loading');
 
   try {
     const metaResp = await gFetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectedSheetId}`);
@@ -800,7 +806,7 @@ async function fetchRows() {
     }
 
     const sheetTitle = sheet.properties.title;
-    const maxNeeded  = Math.max(...rows);
+    lastSheetTitle = sheetTitle;
 
     // Fetch employee name from A1:H2
     const nameResp = await gFetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectedSheetId}/values/${encodeURIComponent("'" + sheetTitle + "'!A1:H2")}`);
@@ -812,47 +818,28 @@ async function fetchRows() {
         for (const cell of row) {
           const c = String(cell||'').trim();
           if (!c) continue;
-          const low = c.toLowerCase();
-          if (skipWords.some(w => low.includes(w))) continue;
+          if (skipWords.some(w => c.toLowerCase().includes(w))) continue;
           employeeName = c; break outer;
-        }
-      }
-      if (!employeeName && nameData.values.length) {
-        for (const row of nameData.values) {
-          for (const cell of row) {
-            const c = String(cell||'').trim();
-            if (c) { employeeName = c; break; }
-          }
-          if (employeeName) break;
         }
       }
     }
 
-    // Fetch data A:I
-    const dataResp = await gFetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectedSheetId}/values/${encodeURIComponent("'" + sheetTitle + "'!A1:I" + maxNeeded)}`);
+    // Fetch all data from row 5 onwards, columns A:I
+    const dataResp = await gFetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectedSheetId}/values/${encodeURIComponent("'" + sheetTitle + "'!A5:I1000")}`);
     const data = await dataResp.json();
     if (data.error) throw new Error(data.error.message);
 
-    const allRows = data.values || [];
-    if (!allRows.length) throw new Error('V tabuľke neboli nájdené žiadne dáta.');
+    const rawRows = data.values || [];
+    if (!rawRows.length) throw new Error('V tabuľke neboli nájdené žiadne dáta od riadku 5.');
 
-    const found   = rows.filter(r => r >= 2 && r <= allRows.length);
-    const missing = rows.filter(r => r < 2  || r > allRows.length);
-    if (!found.length) throw new Error(`Žiadne z požadovaných riadkov neobsahujú dáta. Tabuľka má ${allRows.length} riadkov.`);
+    // Build row objects with original sheet row number (row 5 = index 0)
+    const allRows = rawRows.map((rowData, idx) => ({
+      rowNum: idx + 5,
+      data: rowData
+    }));
 
-    // Split found rows: included (col I has a non-zero number) vs skipped (col I empty or 0)
-    const includedRows = [];
-    const skippedRows  = [];
-    found.forEach(r => {
-      const rowData = allRows[r-1] || [];
-      const colI = String(rowData[8] || '').trim();
-      const num  = parseFloat(colI.replace(',', '.'));
-      if (colI === '' || isNaN(num) || num === 0) {
-        skippedRows.push({ rowNum: r, data: rowData });
-      } else {
-        includedRows.push({ rowNum: r, data: rowData });
-      }
-    });
+    // Filter out completely empty rows
+    const rows = allRows.filter(r => r.data.some(c => String(c||'').trim()));
 
     document.getElementById('employeeDisplay').value = employeeName || '—';
 
@@ -862,36 +849,34 @@ async function fetchRows() {
       : 'Podklad pre výplatu premenlivých zložiek mzdy';
 
     document.getElementById('printMeta').textContent =
-      `${meta.properties.title} › ${sheetTitle}  ·  riadky: ${found.join(', ')}  ·  ${new Date().toLocaleString('sk-SK')}`;
+      `${meta.properties.title} › ${sheetTitle}  ·  ${new Date().toLocaleString('sk-SK')}`;
 
-    renderTable(includedRows, skippedRows, employeeName);
+    lastIncludedRows = []; // will be set dynamically by checkboxes
+    renderTable(rows, employeeName);
 
-    // Save for Zapísať čerpanie
-    lastIncludedRows = includedRows;
-    lastSheetTitle   = sheetTitle;
-    document.getElementById('zapisBtn').disabled = includedRows.length === 0;
-    document.getElementById('zapisBtn').textContent = 'Zapísať čerpanie →';
-
-    let msg = `✓ Načítané: ${includedRows.length} použitých riadkov`;
-    if (skippedRows.length) msg += `, ${skippedRows.length} preskočených (prázdny/nulový stĺpec I)`;
-    if (missing.length) msg += `. Nenájdené: riadky ${missing.join(', ')}`;
-    msg += '.';
-    showStatus(msg, 'ok');
+    const availableCount = rows.filter(r => isAvailable(r)).length;
+    showStatus(`✓ Načítaných ${rows.length} riadkov, ${availableCount} dostupných na výber.`, 'ok');
 
     document.getElementById('printBtn').disabled = false;
     document.getElementById('printBtnTop').disabled = false;
 
   } catch(e) {
     let msg = e.message;
-    if (msg.includes('403')) msg = 'Prístup zamietnutý. Skontrolujte, že má tento účet prístup k tabuľke.';
+    if (msg.includes('403')) msg = 'Prístup zamietnutý.';
     if (msg.includes('401')) msg = 'Relácia vypršala. Odhláste sa a prihláste znova.';
     showStatus('Chyba: ' + msg, 'error');
-  } finally {
-    btn.disabled = false; btn.textContent = 'Načítať riadky →';
   }
 }
 
-// ── ZAPÍSAŤ ČERPANIE ─────────────────────────────────────
+function isAvailable(row) {
+  const colI = String(row.data[8] || '').trim();
+  if (colI === '') return false;
+  const num = parseFloat(colI.replace(',', '.'));
+  if (!isNaN(num) && num === 0) return false;
+  return true;
+}
+
+
 async function zapisatCerpanie() {
   if (!accessToken)              { showStatus('Najprv sa prihláste.', 'error'); return; }
   if (!selectedSheetId)          { showStatus('Najprv načítajte riadky.', 'error'); return; }
@@ -949,11 +934,49 @@ async function zapisatCerpanie() {
 }
 
 // ── RENDER ───────────────────────────────────────────────
-function renderTable(rows, skippedRows, employeeName) {
-  // Read employee name from the editable field (may have been manually edited)
-  const displayName = document.getElementById('employeeDisplay').value.trim() || employeeName;
+function printDoc() {
+  // Mark checked rows for print CSS
+  document.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('row-checked-print'));
+  document.querySelectorAll('.row-checkbox:checked').forEach(cb => {
+    cb.closest('tr').classList.add('row-checked-print');
+  });
+  window.print();
+}
 
+function updateTotal() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  let total = 0;
+  checked.forEach(cb => {
+    const val = parseFloat(String(cb.dataset.colI || '').replace(',', '.'));
+    if (!isNaN(val)) total += val;
+  });
+  const fmt = Number.isInteger(total) ? total.toString() : total.toFixed(2).replace('.', ',');
+  const el = document.getElementById('totalValue');
+  if (el) el.textContent = fmt;
+
+  // Update lastIncludedRows for print and zapis
+  lastIncludedRows = [];
+  checked.forEach(cb => {
+    const rowNum = parseInt(cb.dataset.rowNum);
+    const rowData = JSON.parse(cb.dataset.rowData);
+    lastIncludedRows.push({ rowNum, data: rowData });
+  });
+
+  document.getElementById('zapisBtn').disabled = lastIncludedRows.length === 0;
+  document.getElementById('zapisBtn').textContent = 'Zapísať čerpanie →';
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.row-checkbox').forEach(box => {
+    box.checked = cb.checked;
+  });
+  updateTotal();
+}
+
+function renderTable(rows, employeeName) {
+  // Employee block
   const wrap = document.getElementById('employeeBlockWrap');
+  const displayName = document.getElementById('employeeDisplay').value.trim() || employeeName;
   wrap.innerHTML = displayName ? `
     <div class="employee-block">
       <div>
@@ -971,25 +994,52 @@ function renderTable(rows, skippedRows, employeeName) {
 
   const table = document.createElement('table');
   table.className = 'data-table';
+
   table.innerHTML = `<thead><tr>
-    <th class="col-rownum">#</th>
+    <th class="col-check screen-only"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" title="Vybrať všetky"></th>
+    <th class="col-rownum screen-only">#</th>
     ${COLUMNS.map(c => `<th>${esc(c)}</th>`).join('')}
   </tr></thead>`;
 
-  let total = 0;
   const tbody = document.createElement('tbody');
+
   rows.forEach(({ rowNum, data }) => {
+    const available = isAvailable({ rowNum, data });
+    const colIVal = String(data[8] || '').trim();
+
     const tr = document.createElement('tr');
-    let cells = `<td class="col-rownum" style="color:var(--muted);font-size:10px;text-align:center">${rowNum}</td>`;
-    COL_INDICES.forEach((colIdx, i) => {
+    if (!available) tr.className = 'row-greyed';
+
+    // Checkbox cell
+    const checkTd = document.createElement('td');
+    checkTd.className = 'col-check screen-only';
+    if (available) {
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'row-checkbox';
+      cb.dataset.rowNum = rowNum;
+      cb.dataset.colI = colIVal;
+      cb.dataset.rowData = JSON.stringify(data);
+      cb.onchange = updateTotal;
+      checkTd.appendChild(cb);
+    }
+    tr.appendChild(checkTd);
+
+    // Row number cell
+    const numTd = document.createElement('td');
+    numTd.className = 'col-rownum screen-only';
+    numTd.textContent = rowNum;
+    tr.appendChild(numTd);
+
+    // Data cells A,B,C,D,I
+    COL_INDICES.forEach(colIdx => {
       const val = String(data[colIdx] || '').trim();
-      if (i === 4 && val !== '') {
-        const num = parseFloat(val.replace(',', '.'));
-        if (!isNaN(num)) total += num;
-      }
-      cells += `<td class="${val ? '' : 'td-empty'}">${val ? esc(val) : '—'}</td>`;
+      const td = document.createElement('td');
+      td.className = val ? '' : 'td-empty';
+      td.textContent = val || '—';
+      tr.appendChild(td);
     });
-    tr.innerHTML = cells;
+
     tbody.appendChild(tr);
   });
 
@@ -997,13 +1047,12 @@ function renderTable(rows, skippedRows, employeeName) {
   tableWrap.appendChild(table);
   preview.appendChild(tableWrap);
 
-  // Total
-  const totalFormatted = Number.isInteger(total) ? total.toString() : total.toFixed(2).replace('.', ',');
+  // Total row
   const totalDiv = document.createElement('div');
   totalDiv.className = 'total-row';
   totalDiv.innerHTML = `
     <span class="total-label">Spolu schválené na výplatu:</span>
-    <span class="total-value">${totalFormatted}</span>`;
+    <span class="total-value" id="totalValue">0</span>`;
   preview.appendChild(totalDiv);
 
   // Footer
@@ -1018,49 +1067,4 @@ function renderTable(rows, skippedRows, employeeName) {
       <div class="signature-item" style="margin-top:36px">Schválil:<span class="signature-line"></span></div>
     </div>`;
   preview.appendChild(footer);
-
-  // Skipped rows — screen only, not printed
-  if (skippedRows && skippedRows.length > 0) {
-    const skippedSection = document.createElement('div');
-    skippedSection.className = 'skipped-section';
-    skippedSection.setAttribute('data-noprint', '1');
-
-    skippedSection.innerHTML = `
-      <div class="skipped-header">
-        <span class="skipped-badge">⚠ Preskočené riadky</span>
-      </div>
-      <div class="skipped-label" style="margin-bottom:10px">
-        Tieto riadky neboli zahrnuté do súčtu ani do tlačeného dokumentu, pretože stĺpec I je prázdny alebo nulový.
-      </div>`;
-
-    const skippedWrap = document.createElement('div');
-    skippedWrap.className = 'skipped-table-wrap';
-
-    const skippedTable = document.createElement('table');
-    skippedTable.className = 'skipped-table';
-    skippedTable.innerHTML = `<thead><tr>
-      <th>#</th>
-      ${COLUMNS.map(c => `<th>${esc(c)}</th>`).join('')}
-    </tr></thead>`;
-
-    const skippedBody = document.createElement('tbody');
-    skippedRows.forEach(({ rowNum, data }) => {
-      const tr = document.createElement('tr');
-      let cells = `<td style="text-align:center;font-size:10px">${rowNum}</td>`;
-      COL_INDICES.forEach(colIdx => {
-        const val = String(data[colIdx] || '').trim();
-        cells += `<td>${val || '—'}</td>`;
-      });
-      tr.innerHTML = cells;
-      skippedBody.appendChild(tr);
-    });
-
-    skippedTable.appendChild(skippedBody);
-    skippedWrap.appendChild(skippedTable);
-    skippedSection.appendChild(skippedWrap);
-    preview.appendChild(skippedSection);
-  }
 }
-</script>
-</body>
-</html>
