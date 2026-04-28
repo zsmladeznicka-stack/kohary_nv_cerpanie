@@ -529,20 +529,26 @@
 </div>
 
 <script>
-// ── CONFIG ──────────────────────────────────────────────
+window.onerror = function(msg, src, line, col, err) {
+  document.body.insertAdjacentHTML('afterbegin', '<div style="position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999;font-family:monospace;font-size:12px">JS ERROR line ' + line + ': ' + msg + '</div>');
+  return false;
+};
+</script>
+<script>
+// -- CONFIG ----------------------------------------------
 const ROOT_FOLDER_ID = '0B784zT_u70KHYTlkQ214d2ZWVm8';
 
 const COLUMNS    = ['Dátum', 'Činnosť', 'Čas od', 'Čas do', 'Schválené na výplatu'];
 const COL_INDICES = [0, 1, 2, 3, 8]; // A,B,C,D,I
 
-// ── STATE ────────────────────────────────────────────────
+// -- STATE ------------------------------------------------
 let accessToken = null;
 const CLIENT_ID = '249918391952-ppn7a4c88qa0fl47g21k2ldd3957a0c0.apps.googleusercontent.com';
 let selectedSheetId = null;
 let lastIncludedRows = [];   // rows with values — used by Zapísať čerpanie
 let lastSheetTitle   = '';   // active tab name from last fetch
 
-// ── SETUP ────────────────────────────────────────────────
+// -- SETUP ------------------------------------------------
 window.addEventListener('DOMContentLoaded', () => {
   initGoogleAuth();
 });
@@ -551,7 +557,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // resetClientId removed — CLIENT_ID is hardcoded
 
-// ── GOOGLE AUTH ──────────────────────────────────────────
+// -- GOOGLE AUTH ------------------------------------------
 
 const OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',
@@ -575,7 +581,9 @@ function startSignIn() {
     scope:         OAUTH_SCOPES,
     prompt:        'select_account'
   });
-  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+  const url = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+  console.log('Redirecting to:', url);
+  window.location.href = url;
 }
 
 async function handleOAuthCallback() {
@@ -658,7 +666,7 @@ function disableInputs() {
   ['sheetTab','monthInput','employeeDisplay'].forEach(id => document.getElementById(id).disabled = true);
 }
 
-// ── DRIVE FOLDER LOADING ─────────────────────────────────
+// -- DRIVE FOLDER LOADING ---------------------------------
 async function loadFolders() {
   const folderSel = document.getElementById('folderSelect');
   folderSel.innerHTML = '<option value="">Načítavam priečinky…</option>';
@@ -752,7 +760,7 @@ function onSheetChange() {
   fetchRows(); // auto-fetch when sheet selected
 }
 
-// ── HELPERS ──────────────────────────────────────────────
+// -- HELPERS ----------------------------------------------
 function parseRows(str) {
   const nums = new Set();
   str.split(',').forEach(part => {
@@ -774,7 +782,7 @@ async function gFetch(url) {
   return fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
 }
 
-// ── FETCH ROWS ───────────────────────────────────────────
+// -- FETCH ROWS -------------------------------------------
 async function fetchRows() {
   if (!accessToken)     { showStatus('Najprv sa prihláste.', 'error'); return; }
   if (!selectedSheetId) { showStatus('Vyberte tabuľku.', 'error'); return; }
@@ -928,7 +936,7 @@ async function zapisatCerpanie() {
   }
 }
 
-// ── RENDER ───────────────────────────────────────────────
+// -- RENDER -----------------------------------------------
 function printDoc() {
   // Mark checked rows for print CSS
   document.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('row-checked-print'));
