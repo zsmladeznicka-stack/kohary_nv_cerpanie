@@ -888,7 +888,7 @@ async function fetchRows() {
 }
 
 function getEffectiveValue(data) {
-  // Returns I - K. If K empty treat as 0. Negative results clamped to 0.
+  // Returns I - K. If K empty treat as 0. Ne results clamped to 0.
   const colI = String(data[8] || '').trim();
   if (colI === '') return null;
   const numI = parseFloat(colI.replace(',', '.'));
