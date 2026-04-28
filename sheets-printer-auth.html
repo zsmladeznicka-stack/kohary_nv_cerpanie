@@ -539,7 +539,7 @@
 // -- CONFIG ----------------------------------------------
 const ROOT_FOLDER_ID = '0B784zT_u70KHYTlkQ214d2ZWVm8';
 
-const COLUMNS    = ['Dátum', 'Činnosť', 'Čas od', 'Čas do', 'Na výplatu (hod.)'];
+const COLUMNS    = ['Dátum', 'Činnosť', 'Čas od', 'Čas do', 'Schválené na výplatu'];
 const COL_INDICES = [0, 1, 2, 3, 8]; // A,B,C,D,I
 
 // -- STATE ------------------------------------------------
@@ -888,17 +888,14 @@ async function fetchRows() {
 }
 
 function getEffectiveValue(data) {
-  // Returns I - K when I > 0, else returns I as-is (could be 0 or empty)
+  // Always returns I - K. If K is empty, treat as 0.
   const colI = String(data[8] || '').trim();
-  const colK = String(data[10] || '').trim();
-  if (colI === '') return null; // empty
+  if (colI === '') return null; // I is empty — row has no value at all
   const numI = parseFloat(colI.replace(',', '.'));
   if (isNaN(numI)) return null;
-  if (numI > 0 && colK !== '') {
-    const numK = parseFloat(colK.replace(',', '.'));
-    if (!isNaN(numK)) return numI - numK;
-  }
-  return numI; // I has value, K empty → show I as-is
+  const colK = String(data[10] || '').trim();
+  const numK = colK !== '' ? parseFloat(colK.replace(',', '.')) : 0;
+  return numI - (isNaN(numK) ? 0 : numK);
 }
 
 function isAvailable(row) {
