@@ -367,11 +367,13 @@
       background: #efefef; color: #333; font-size: 7.5pt;
       padding: 4pt 8pt; border-bottom: 1pt solid #bbb;
     }
-    .data-table td { padding: 4pt 8pt; color: #111; border-bottom: 1pt solid #e0e0e0; }
+    .data-table td { padding: 4pt 8pt; color: #000; border-bottom: 1pt solid #e0e0e0; }
     .data-table tbody tr:last-child td { border-bottom: none; }
     .data-table tbody tr:hover { background: none; }
     .col-rownum { display: none !important; }
-    .td-empty { color: #ccc; }
+    .td-empty { color: #999; }
+    /* Force all table text black in print */
+    .data-table td, .data-table th, .row-checked-print td { color: #000 !important; background: white !important; }
 
     .total-row {
       margin-top: 6pt; padding: 5pt 8pt;
@@ -537,7 +539,7 @@
 // -- CONFIG ----------------------------------------------
 const ROOT_FOLDER_ID = '0B784zT_u70KHYTlkQ214d2ZWVm8';
 
-const COLUMNS    = ['Dátum', 'Činnosť', 'Čas od', 'Čas do', 'Schválené na výplatu'];
+const COLUMNS    = ['Dátum', 'Činnosť', 'Čas od', 'Čas do', 'Na výplatu (hod.)'];
 const COL_INDICES = [0, 1, 2, 3, 8]; // A,B,C,D,I
 
 // -- STATE ------------------------------------------------
@@ -885,11 +887,24 @@ async function fetchRows() {
   }
 }
 
+function getEffectiveValue(data) {
+  // Returns I - K when I > 0, else returns I as-is (could be 0 or empty)
+  const colI = String(data[8] || '').trim();
+  const colK = String(data[10] || '').trim();
+  if (colI === '') return null; // empty
+  const numI = parseFloat(colI.replace(',', '.'));
+  if (isNaN(numI)) return null;
+  if (numI > 0 && colK !== '') {
+    const numK = parseFloat(colK.replace(',', '.'));
+    if (!isNaN(numK)) return numI - numK;
+  }
+  return numI; // I has value, K empty → show I as-is
+}
+
 function isAvailable(row) {
-  const colI = String(row.data[8] || '').trim();
-  if (colI === '') return false;
-  const num = parseFloat(colI.replace(',', '.'));
-  if (!isNaN(num) && num === 0) return false;
+  const val = getEffectiveValue(row.data);
+  if (val === null) return false; // empty I
+  if (val === 0) return false;    // I - K = 0 (fully paid) or I = 0
   return true;
 }
 
@@ -914,10 +929,11 @@ async function zapisatCerpanie() {
 
   try {
     const data = lastIncludedRows.map(({ rowNum, data: rowData }) => {
-      const colIVal = String(rowData[8] || '').trim();
+      const effective = getEffectiveValue(rowData);
+      const colKVal = effective !== null ? String(effective) : '';
       return {
         range: `'${lastSheetTitle}'!J${rowNum}:L${rowNum}`,
-        values: [[ 'Platené', colIVal, mesiacRok ]]
+        values: [[ 'Platené', colKVal, mesiacRok ]]
       };
     });
 
@@ -1039,8 +1055,6 @@ function renderTable(rows, employeeName) {
 
   rows.forEach(({ rowNum, data }) => {
     const available = isAvailable({ rowNum, data });
-    const colIVal = String(data[8] || '').trim();
-
     const tr = document.createElement('tr');
     if (!available) tr.className = 'row-greyed';
 
@@ -1052,7 +1066,8 @@ function renderTable(rows, employeeName) {
       cb.type = 'checkbox';
       cb.className = 'row-checkbox';
       cb.dataset.rowNum = rowNum;
-      cb.dataset.colI = colIVal;
+      const effectiveVal = getEffectiveValue(data);
+      cb.dataset.colI = effectiveVal !== null ? String(effectiveVal) : '0';
       cb.dataset.rowData = JSON.stringify(data);
       cb.onchange = updateTotal;
       checkTd.appendChild(cb);
@@ -1065,12 +1080,23 @@ function renderTable(rows, employeeName) {
     numTd.textContent = rowNum;
     tr.appendChild(numTd);
 
-    // Data cells A,B,C,D,I
-    COL_INDICES.forEach(colIdx => {
-      const val = String(data[colIdx] || '').trim();
+    // Data cells A,B,C,D and effective value (I-K)
+    COL_INDICES.forEach((colIdx, i) => {
       const td = document.createElement('td');
-      td.className = val ? '' : 'td-empty';
-      td.textContent = val || '—';
+      if (i < 4) {
+        // Columns A,B,C,D — show as-is
+        const val = String(data[colIdx] || '').trim();
+        td.className = val ? '' : 'td-empty';
+        td.textContent = val || '—';
+      } else {
+        // Last column: show I-K when I > 0, else I as-is
+        const effective = getEffectiveValue(data);
+        const display = effective !== null && effective !== 0
+          ? (Number.isInteger(effective) ? String(effective) : effective.toFixed(2).replace('.', ','))
+          : '—';
+        td.className = display === '—' ? 'td-empty' : '';
+        td.textContent = display;
+      }
       tr.appendChild(td);
     });
 
@@ -1085,8 +1111,9 @@ function renderTable(rows, employeeName) {
   const totalDiv = document.createElement('div');
   totalDiv.className = 'total-row';
   totalDiv.innerHTML = `
-    <span class="total-label">Spolu schválené na výplatu:</span>
-    <span class="total-value" id="totalValue">0</span>`;
+    <span class="total-label">Spolu pre výplatu:</span>
+    <span class="total-value" id="totalValue">0</span>
+    <span class="total-label" style="margin-left:4px">hod.</span>`;
   preview.appendChild(totalDiv);
 
   // Footer
