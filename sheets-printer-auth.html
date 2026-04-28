@@ -290,6 +290,8 @@
 
   /* ── CHECKBOXES & GREYED ROWS ── */
   .row-greyed td { color: var(--muted) !important; opacity: 0.4; }
+  .row-checked td { background: rgba(124,106,247,0.12) !important; }
+  .row-checked td:first-child { border-left: 3px solid var(--accent); }
   .row-greyed:hover { background: none !important; }
   .row-checked { background: rgba(124,106,247,0.12) !important; }
   .row-checked td { color: var(--white) !important; }
@@ -384,6 +386,7 @@
     .signature-item { font-size: 9pt; color: #111; margin-bottom: 14pt; }
     .signature-line { border-bottom: 1pt solid #999; width: 160pt; margin-top: 20pt; }
     .screen-only { display: none !important; }
+    .row-checked td { background: none !important; border-left: none !important; }
     .row-greyed { display: none !important; }
     tbody tr:not(.row-checked-print) { display: none !important; }
     .skipped-section { display: none !important; }
@@ -849,12 +852,8 @@ async function fetchRows() {
     // Filter out rows where all relevant columns (A,B,C,D,I) are empty
     const rows = allRows.filter(r => {
       if (!r.data || r.data.length === 0) return false;
-      // Check columns A(0),B(1),C(2),D(3),I(8) — only keep if at least one has content
-      const relevant = [0, 1, 2, 3, 8];
-      return relevant.some(colIdx => {
-        const val = (r.data[colIdx] !== undefined && r.data[colIdx] !== null)
-          ? String(r.data[colIdx]).trim()
-          : '';
+      return [0, 1, 2, 3, 8].some(colIdx => {
+        const val = String(r.data[colIdx] ?? '').replace(/[\s\u00a0\u200b\u200c\u200d\ufeff]/g, '');
         return val !== '';
       });
     });
@@ -962,6 +961,13 @@ function printDoc() {
 }
 
 function updateTotal() {
+  // Update row highlight
+  document.querySelectorAll('.row-checkbox').forEach(cb => {
+    const tr = cb.closest('tr');
+    if (cb.checked) tr.classList.add('row-checked');
+    else tr.classList.remove('row-checked');
+  });
+
   const checked = document.querySelectorAll('.row-checkbox:checked');
   let total = 0;
   checked.forEach(cb => {
