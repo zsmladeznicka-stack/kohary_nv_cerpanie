@@ -291,6 +291,8 @@
   /* ── CHECKBOXES & GREYED ROWS ── */
   .row-greyed td { color: var(--muted) !important; opacity: 0.4; }
   .row-greyed:hover { background: none !important; }
+  .row-checked { background: rgba(124,106,247,0.12) !important; }
+  .row-checked td { color: var(--white) !important; }
 
   .col-check { width: 36px; text-align: center; }
   .row-checkbox {
@@ -844,8 +846,18 @@ async function fetchRows() {
       data: rowData
     }));
 
-    // Filter out completely empty rows
-    const rows = allRows.filter(r => r.data.some(c => String(c||'').trim()));
+    // Filter out rows where all relevant columns (A,B,C,D,I) are empty
+    const rows = allRows.filter(r => {
+      if (!r.data || r.data.length === 0) return false;
+      // Check columns A(0),B(1),C(2),D(3),I(8) — only keep if at least one has content
+      const relevant = [0, 1, 2, 3, 8];
+      return relevant.some(colIdx => {
+        const val = (r.data[colIdx] !== undefined && r.data[colIdx] !== null)
+          ? String(r.data[colIdx]).trim()
+          : '';
+        return val !== '';
+      });
+    });
 
     document.getElementById('employeeDisplay').value = employeeName || '—';
 
@@ -959,6 +971,16 @@ function updateTotal() {
   const fmt = Number.isInteger(total) ? total.toString() : total.toFixed(2).replace('.', ',');
   const el = document.getElementById('totalValue');
   if (el) el.textContent = fmt;
+
+  // Highlight checked rows, unhighlight unchecked
+  document.querySelectorAll('.row-checkbox').forEach(cb => {
+    const tr = cb.closest('tr');
+    if (cb.checked) {
+      tr.classList.add('row-checked');
+    } else {
+      tr.classList.remove('row-checked');
+    }
+  });
 
   // Update lastIncludedRows for print and zapis
   lastIncludedRows = [];
