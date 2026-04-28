@@ -896,12 +896,7 @@ function getEffectiveValue(data) {
   const colK = String(data[10] || '').trim();
   const numK = colK !== '' ? parseFloat(colK.replace(',', '.')) : 0;
   const result = numI - (isNaN(numK) ? 0 : numK);
-  const clamped = result < 0 ? 0 : result;
-  if (result < 0) {
-    // Force visible proof the clamp ran
-    data._debug = 'CLAMPED:' + result + '->0';
-  }
-  return clamped;
+  return result < 0 ? 0 : result;
 }
 
 function isAvailable(row) {
@@ -1103,7 +1098,7 @@ function renderTable(rows, employeeName) {
             : effective.toFixed(2).replace('.', ',');
         }
         td.className = display === '—' ? 'td-empty' : '';
-        td.textContent = display + (data._debug ? ' ' + data._debug : '');
+        td.textContent = display;
       }
       tr.appendChild(td);
     });
