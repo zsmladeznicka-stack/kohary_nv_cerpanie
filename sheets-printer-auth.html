@@ -698,7 +698,6 @@ async function onFolderChange() {
   const sheetSel = document.getElementById('sheetSelect');
   selectedSheetId = null;
   disableInputs();
-  document.getElementById('fetchBtn').disabled = true;
 
   if (!folderId) {
     sheetSel.innerHTML = '<option value="">— Vyberte zamestnanca —</option>';
