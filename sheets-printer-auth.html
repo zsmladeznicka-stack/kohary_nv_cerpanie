@@ -837,8 +837,8 @@ async function fetchRows() {
       }
     }
 
-    // Fetch all data from row 5 onwards, columns A:I
-    const dataResp = await gFetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectedSheetId}/values/${encodeURIComponent("'" + sheetTitle + "'!A5:I1000")}`);
+    // Fetch all data from row 5 onwards, columns A:K
+    const dataResp = await gFetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectedSheetId}/values/${encodeURIComponent("'" + sheetTitle + "'!A5:K1000")}`);
     const data = await dataResp.json();
     if (data.error) throw new Error(data.error.message);
 
