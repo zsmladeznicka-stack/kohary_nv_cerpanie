@@ -888,15 +888,15 @@ async function fetchRows() {
 }
 
 function getEffectiveValue(data) {
-  // Always returns I - K. If K is empty, treat as 0.
+  // Returns I - K. If K empty treat as 0. Negative results clamped to 0.
   const colI = String(data[8] || '').trim();
-  const colK = String(data[10] || '').trim();
-  console.log('getEffectiveValue — I:', colI, '| K:', colK, '| data.length:', data.length);
   if (colI === '') return null;
   const numI = parseFloat(colI.replace(',', '.'));
   if (isNaN(numI)) return null;
+  const colK = String(data[10] || '').trim();
   const numK = colK !== '' ? parseFloat(colK.replace(',', '.')) : 0;
-  return numI - (isNaN(numK) ? 0 : numK);
+  const result = numI - (isNaN(numK) ? 0 : numK);
+  return result < 0 ? 0 : result; // clamp negatives to 0
 }
 
 function isAvailable(row) {
@@ -1089,8 +1089,6 @@ function renderTable(rows, employeeName) {
       } else {
         // Last column: always show I - K (K treated as 0 if empty)
         const effective = getEffectiveValue(data);
-        const rawK = String(data[10] || '').trim();
-        const rawI = String(data[8] || '').trim();
         let display;
         if (effective === null) {
           display = '—';
@@ -1100,7 +1098,7 @@ function renderTable(rows, employeeName) {
             : effective.toFixed(2).replace('.', ',');
         }
         td.className = display === '—' ? 'td-empty' : '';
-        td.textContent = display + ' [I=' + rawI + ' K=' + rawK + ' len=' + data.length + ']';
+        td.textContent = display;
       }
       tr.appendChild(td);
     });
