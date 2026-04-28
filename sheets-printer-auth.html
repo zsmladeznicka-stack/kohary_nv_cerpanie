@@ -1086,11 +1086,16 @@ function renderTable(rows, employeeName) {
         td.className = val ? '' : 'td-empty';
         td.textContent = val || '—';
       } else {
-        // Last column: show I-K when I > 0, else I as-is
+        // Last column: always show I - K (K treated as 0 if empty)
         const effective = getEffectiveValue(data);
-        const display = effective !== null && effective !== 0
-          ? (Number.isInteger(effective) ? String(effective) : effective.toFixed(2).replace('.', ','))
-          : '—';
+        let display;
+        if (effective === null) {
+          display = '—';
+        } else {
+          display = Number.isInteger(effective)
+            ? String(effective)
+            : effective.toFixed(2).replace('.', ',');
+        }
         td.className = display === '—' ? 'td-empty' : '';
         td.textContent = display;
       }
