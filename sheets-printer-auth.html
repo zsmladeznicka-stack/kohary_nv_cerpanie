@@ -685,8 +685,11 @@ async function loadFolders() {
       folderSel.appendChild(opt);
     });
     folderSel.disabled = false;
+    folderSel.onchange = onFolderChange;
+    // Fallback: also add via addEventListener
     folderSel.addEventListener('change', onFolderChange);
-    showStatus(`✓ Načítaných ${folders.length} zamestnancov.`, 'ok');
+    folderSel.addEventListener('input', onFolderChange);
+    showStatus(`✓ Načítaných ${folders.length} zamestnancov. Vyberte meno.`, 'ok');
 
   } catch(e) {
     folderSel.innerHTML = '<option value="">Chyba načítania</option>';
@@ -696,6 +699,7 @@ async function loadFolders() {
 
 async function onFolderChange() {
   const folderId = document.getElementById('folderSelect').value;
+  showStatus('Vybrané: ' + document.getElementById('folderSelect').options[document.getElementById('folderSelect').selectedIndex].text + ' (' + folderId + ')', 'loading');
   const sheetSel = document.getElementById('sheetSelect');
   selectedSheetId = null;
   disableInputs();
