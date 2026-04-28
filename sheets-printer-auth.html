@@ -707,13 +707,17 @@ async function onFolderChange() {
 
   sheetSel.innerHTML = '<option value="">Načítavam tabuľky…</option>';
   sheetSel.disabled = true;
+  showStatus('Načítavam tabuľky…', 'loading');
 
   try {
+    if (!accessToken) throw new Error('Nie ste prihlásený — token chýba.');
+
     const q = encodeURIComponent(`'${folderId}' in parents and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
-    const resp = await gFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=name&fields=files(id,name)&pageSize=200`);
+    const url = `https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=name&fields=files(id,name)&pageSize=200`;
+    const resp = await gFetch(url);
     const data = await resp.json();
 
-    if (data.error) throw new Error(data.error.message);
+    if (data.error) throw new Error(`Drive API: ${data.error.code} — ${data.error.message}`);
 
     const sheets = data.files || [];
     if (!sheets.length) {
@@ -734,7 +738,7 @@ async function onFolderChange() {
 
   } catch(e) {
     sheetSel.innerHTML = '<option value="">Chyba načítania</option>';
-    showStatus('Chyba načítania tabuliek: ' + e.message, 'error');
+    showStatus('Chyba: ' + e.message, 'error');
   }
 }
 
