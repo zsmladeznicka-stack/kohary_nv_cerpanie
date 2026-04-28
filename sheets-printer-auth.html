@@ -890,10 +890,11 @@ async function fetchRows() {
 function getEffectiveValue(data) {
   // Always returns I - K. If K is empty, treat as 0.
   const colI = String(data[8] || '').trim();
-  if (colI === '') return null; // I is empty — row has no value at all
+  const colK = String(data[10] || '').trim();
+  console.log('getEffectiveValue — I:', colI, '| K:', colK, '| data.length:', data.length);
+  if (colI === '') return null;
   const numI = parseFloat(colI.replace(',', '.'));
   if (isNaN(numI)) return null;
-  const colK = String(data[10] || '').trim();
   const numK = colK !== '' ? parseFloat(colK.replace(',', '.')) : 0;
   return numI - (isNaN(numK) ? 0 : numK);
 }
