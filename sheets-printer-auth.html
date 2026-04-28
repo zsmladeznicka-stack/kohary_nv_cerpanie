@@ -304,6 +304,7 @@
     outline: none; cursor: pointer; width: 68px;
   }
   .subtract-select:focus { border-color: var(--accent); }
+  .subtract-select:disabled { opacity: 0.3; cursor: not-allowed; }
   .row-checkbox {
     width: 15px; height: 15px; cursor: pointer;
     accent-color: var(--accent);
@@ -1001,12 +1002,35 @@ async function zapisatCerpanie() {
 
 // -- RENDER -----------------------------------------------
 function printDoc() {
-  // Mark checked rows for print CSS
+  // Mark checked rows for print
   document.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('row-checked-print'));
+
+  // For each checked row, temporarily replace last cell text with selected dropdown value
+  const swaps = [];
   document.querySelectorAll('.row-checkbox:checked').forEach(cb => {
-    cb.closest('tr').classList.add('row-checked-print');
+    const tr = cb.closest('tr');
+    tr.classList.add('row-checked-print');
+
+    const rowNum = cb.dataset.rowNum;
+    const sel = document.querySelector(`.subtract-select[data-row-num="${rowNum}"]`);
+    if (sel) {
+      const selectedVal = parseFloat(sel.value);
+      const display = Number.isInteger(selectedVal)
+        ? String(selectedVal)
+        : selectedVal.toFixed(1).replace('.', ',');
+      const dataCells = tr.querySelectorAll('td:not(.screen-only)');
+      if (dataCells.length > 0) {
+        const lastCell = dataCells[dataCells.length - 1];
+        swaps.push({ cell: lastCell, original: lastCell.textContent });
+        lastCell.textContent = display;
+      }
+    }
   });
+
   window.print();
+
+  // Restore original values after print dialog closes
+  swaps.forEach(({ cell, original }) => { cell.textContent = original; });
 }
 
 function updateTotal() {
@@ -1058,6 +1082,8 @@ function updateTotal() {
 function toggleSelectAll(cb) {
   document.querySelectorAll('.row-checkbox').forEach(box => {
     box.checked = cb.checked;
+    const sel = document.querySelector(`.subtract-select[data-row-num="${box.dataset.rowNum}"]`);
+    if (sel) sel.disabled = !cb.checked;
   });
   updateTotal();
 }
@@ -1130,8 +1156,12 @@ function renderTable(rows, employeeName) {
         cb.dataset.colI = this.value;
         updateTotal();
       };
+      sel.disabled = true; // disabled until checkbox is checked
 
-      cb.onchange = updateTotal;
+      cb.onchange = function() {
+        sel.disabled = !this.checked;
+        updateTotal();
+      };
       checkTd.appendChild(cb);
       checkTd.appendChild(document.createTextNode(' '));
       checkTd.appendChild(sel);
