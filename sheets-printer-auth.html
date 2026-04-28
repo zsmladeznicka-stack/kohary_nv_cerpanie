@@ -297,6 +297,13 @@
   .row-checked td { color: var(--white) !important; }
 
   .col-check { width: 36px; text-align: center; }
+  .subtract-select {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--accent2); font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; padding: 3px 5px; border-radius: 4px;
+    outline: none; cursor: pointer; width: 68px;
+  }
+  .subtract-select:focus { border-color: var(--accent); }
   .row-checkbox {
     width: 15px; height: 15px; cursor: pointer;
     accent-color: var(--accent);
@@ -888,7 +895,7 @@ async function fetchRows() {
 }
 
 function getEffectiveValue(data) {
-  // Returns I - K. If K empty treat as 0. Ne results clamped to 0.
+  // Returns I - K. If K empty treat as 0. Negative results clamped to 0.
   const colI = String(data[8] || '').trim();
   if (colI === '') return null;
   const numI = parseFloat(colI.replace(',', '.'));
@@ -918,7 +925,7 @@ async function zapisatCerpanie() {
   const year = new Date().getFullYear();
   const mesiacRok = `${month} ${year}`;
 
-  if (!confirm(`Zapísať čerpanie do tabuľky?\n\nStĺpce J, K, L pre ${lastIncludedRows.length} riadkov budú vyplnené.\nMesiac: ${mesiacRok}\n\nTáto akcia je nevratná.`)) return;
+  if (!confirm(`Zapísať čerpanie do tabuľky?\n\n${lastIncludedRows.length} riadkov, mesiac: ${mesiacRok}\nK = kumulatívny súčet, L = história čerpania\n\nTáto akcia je nevratná.`)) return;
 
   const btn = document.getElementById('zapisBtn');
   btn.disabled = true;
@@ -926,12 +933,40 @@ async function zapisatCerpanie() {
   showStatus('Zapisujem do tabuľky…', 'loading');
 
   try {
-    const data = lastIncludedRows.map(({ rowNum, data: rowData }) => {
-      const effective = getEffectiveValue(rowData);
-      const colKVal = effective !== null ? String(effective) : '';
+    // First read existing L values for all rows we're about to write
+    const rowNums = lastIncludedRows.map(r => r.rowNum);
+    const minRow = Math.min(...rowNums);
+    const maxRow = Math.max(...rowNums);
+    const existingResp = await gFetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${selectedSheetId}/values/${encodeURIComponent("'" + lastSheetTitle + "'!J" + minRow + ":L" + maxRow)}`
+    );
+    const existingData = await existingResp.json();
+    const existingRows = existingData.values || [];
+
+    // Build a map of rowNum -> existing L value
+    const existingL = {};
+    const existingK = {};
+    existingRows.forEach((row, idx) => {
+      const rNum = minRow + idx;
+      existingK[rNum] = String(row[1] || '').trim(); // col K = index 1 in J:L range
+      existingL[rNum] = String(row[2] || '').trim(); // col L = index 2 in J:L range
+    });
+
+    const writeData = lastIncludedRows.map(({ rowNum, data: rowData, selectedVal }) => {
+      // Cumulative K: old K + selectedVal
+      const oldK = existingK[rowNum] !== undefined ? parseFloat(String(existingK[rowNum]).replace(',', '.')) : 0;
+      const newK = (isNaN(oldK) ? 0 : oldK) + selectedVal;
+      const newKStr = Number.isInteger(newK) ? String(newK) : newK.toFixed(2).replace('.', ',');
+
+      // Append to L: "mesiac rok - X hod." or append ", mesiac rok - X hod."
+      const selLabel = Number.isInteger(selectedVal) ? String(selectedVal) : selectedVal.toFixed(1).replace('.', ',');
+      const newEntry = `${mesiacRok} - ${selLabel} hod.`;
+      const oldL = existingL[rowNum] || '';
+      const newL = oldL ? `${oldL}, ${newEntry}` : newEntry;
+
       return {
         range: `'${lastSheetTitle}'!J${rowNum}:L${rowNum}`,
-        values: [[ 'Platené', colKVal, mesiacRok ]]
+        values: [[ 'Platené', newKStr, newL ]]
       };
     });
 
@@ -943,7 +978,7 @@ async function zapisatCerpanie() {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data })
+        body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data: writeData })
       }
     );
 
@@ -985,7 +1020,11 @@ function updateTotal() {
   const checked = document.querySelectorAll('.row-checkbox:checked');
   let total = 0;
   checked.forEach(cb => {
-    const val = parseFloat(String(cb.dataset.colI || '').replace(',', '.'));
+    // Use dropdown selected value if present, otherwise fall back to dataset.colI
+    const rowNum = cb.dataset.rowNum;
+    const sel = document.querySelector(`.subtract-select[data-row-num="${rowNum}"]`);
+    const raw = sel ? sel.value : cb.dataset.colI;
+    const val = parseFloat(String(raw || '').replace(',', '.'));
     if (!isNaN(val)) total += val;
   });
   const fmt = Number.isInteger(total) ? total.toString() : total.toFixed(2).replace('.', ',');
@@ -1007,7 +1046,9 @@ function updateTotal() {
   checked.forEach(cb => {
     const rowNum = parseInt(cb.dataset.rowNum);
     const rowData = JSON.parse(cb.dataset.rowData);
-    lastIncludedRows.push({ rowNum, data: rowData });
+    const sel = document.querySelector(`.subtract-select[data-row-num="${cb.dataset.rowNum}"]`);
+    const selectedVal = sel ? parseFloat(sel.value) : parseFloat(cb.dataset.colI);
+    lastIncludedRows.push({ rowNum, data: rowData, selectedVal });
   });
 
   document.getElementById('zapisBtn').disabled = lastIncludedRows.length === 0;
@@ -1056,19 +1097,44 @@ function renderTable(rows, employeeName) {
     const tr = document.createElement('tr');
     if (!available) tr.className = 'row-greyed';
 
-    // Checkbox cell
+    // Checkbox cell + subtract dropdown
     const checkTd = document.createElement('td');
     checkTd.className = 'col-check screen-only';
-    if (available) {
+    checkTd.style.whiteSpace = 'nowrap';
+    const effectiveVal = getEffectiveValue(data);
+    if (available && effectiveVal !== null) {
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.className = 'row-checkbox';
       cb.dataset.rowNum = rowNum;
-      const effectiveVal = getEffectiveValue(data);
-      cb.dataset.colI = effectiveVal !== null ? String(effectiveVal) : '0';
+      cb.dataset.colI = String(effectiveVal);
       cb.dataset.rowData = JSON.stringify(data);
+
+      // Build dropdown with 0.5 steps up to effectiveVal, default = effectiveVal
+      const sel = document.createElement('select');
+      sel.className = 'subtract-select screen-only';
+      sel.dataset.rowNum = rowNum;
+      const steps = Math.round(effectiveVal / 0.5);
+      for (let i = 1; i <= steps; i++) {
+        const v = i * 0.5;
+        const opt = document.createElement('option');
+        const label = Number.isInteger(v) ? String(v) : v.toFixed(1).replace('.', ',');
+        opt.value = String(v);
+        opt.textContent = label + ' hod.';
+        if (v === effectiveVal) opt.selected = true;
+        sel.appendChild(opt);
+      }
+
+      // When dropdown changes, update the checkbox's colI and recalculate total
+      sel.onchange = function() {
+        cb.dataset.colI = this.value;
+        updateTotal();
+      };
+
       cb.onchange = updateTotal;
       checkTd.appendChild(cb);
+      checkTd.appendChild(document.createTextNode(' '));
+      checkTd.appendChild(sel);
     }
     tr.appendChild(checkTd);
 
