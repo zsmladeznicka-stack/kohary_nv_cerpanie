@@ -1089,6 +1089,8 @@ function renderTable(rows, employeeName) {
       } else {
         // Last column: always show I - K (K treated as 0 if empty)
         const effective = getEffectiveValue(data);
+        const rawK = String(data[10] || '').trim();
+        const rawI = String(data[8] || '').trim();
         let display;
         if (effective === null) {
           display = '—';
@@ -1098,7 +1100,7 @@ function renderTable(rows, employeeName) {
             : effective.toFixed(2).replace('.', ',');
         }
         td.className = display === '—' ? 'td-empty' : '';
-        td.textContent = display;
+        td.textContent = display + ' [I=' + rawI + ' K=' + rawK + ' len=' + data.length + ']';
       }
       tr.appendChild(td);
     });
