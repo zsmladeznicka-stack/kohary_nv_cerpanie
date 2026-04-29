@@ -584,27 +584,15 @@
 <script>
 // -- CONFIG ----------------------------------------------
 const ROOT_FOLDER_ID = '0B784zT_u70KHYTlkQ214d2ZWVm8';
-
-const COLUMNS    = ['Dátum', 'Činnosť', 'Čas od', 'Čas do', 'Schválené na výplatu'];
+const COLUMNS     = ['Dátum', 'Činnosť', 'Čas od', 'Čas do', 'Schválené na výplatu'];
 const COL_INDICES = [0, 1, 2, 3, 8]; // A,B,C,D,I
+const CLIENT_ID   = '249918391952-ppn7a4c88qa0fl47g21k2ldd3957a0c0.apps.googleusercontent.com';
 
 // -- STATE ------------------------------------------------
-let accessToken = null;
-const CLIENT_ID = '249918391952-ppn7a4c88qa0fl47g21k2ldd3957a0c0.apps.googleusercontent.com';
-let selectedSheetId = null;
-let lastIncludedRows = [];   // rows with values — used by Zapísať čerpanie
-let lastSheetTitle   = '';   // active tab name from last fetch
-
-// -- SETUP ------------------------------------------------
-window.addEventListener('DOMContentLoaded', () => {
-  initGoogleAuth();
-});
-
-// saveClientId removed — CLIENT_ID is hardcoded
-
-// resetClientId removed — CLIENT_ID is hardcoded
-
-// -- GOOGLE AUTH ------------------------------------------
+let accessToken      = null;
+let selectedSheetId  = null;
+let lastIncludedRows = [];
+let lastSheetTitle   = '';
 
 const OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',
@@ -613,6 +601,12 @@ const OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email'
 ].join(' ');
 
+// -- SETUP ------------------------------------------------
+window.addEventListener('DOMContentLoaded', () => {
+  initGoogleAuth();
+});
+
+// -- GOOGLE AUTH ------------------------------------------
 function initGoogleAuth() {
   if (window.location.hash && window.location.hash.includes('access_token')) {
     handleOAuthCallback();
@@ -638,14 +632,10 @@ async function handleOAuthCallback() {
   const params = new URLSearchParams(hash);
   const token = params.get('access_token');
   const error = params.get('error');
-
   history.replaceState(null, '', window.location.pathname);
-
   if (error) { showStatus('Chyba prihlásenia: ' + error, 'error'); return; }
   if (!token) return;
-
   accessToken = token;
-
   try {
     const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: 'Bearer ' + accessToken }
@@ -653,20 +643,19 @@ async function handleOAuthCallback() {
     const profile = await r.json();
     showUser(profile);
   } catch(e) {
-    showUser({ name: 'Používateľ', email: '' });
+    showUser({ name: 'Pouzivatel', email: '' });
   }
-  showStatus('Prihlásený — načítavam priečinky…', 'loading');
+  showStatus('Prihlaseny - nacitavam priecinky...', 'loading');
   loadFolders();
 }
-
 
 function showUser(profile) {
   document.getElementById('authArea').style.display = 'none';
   document.getElementById('userArea').style.display = 'block';
-  document.getElementById('userName').textContent = profile.name || 'Používateľ';
+  document.getElementById('userName').textContent = profile.name || 'Pouzivatel';
   document.getElementById('userEmail').textContent = profile.email || '';
   const av = document.getElementById('userAvatar');
-  if (profile.picture) av.innerHTML = `<img src="${profile.picture}" alt="">`;
+  if (profile.picture) av.innerHTML = '<img src="' + profile.picture + '" alt="">';
   else av.textContent = (profile.name || 'U')[0].toUpperCase();
 }
 
@@ -685,27 +674,12 @@ function signOut() {
   document.getElementById('zapisBtn').disabled = true;
   document.getElementById('printBtn').disabled = true;
   document.getElementById('printBtnTop').disabled = true;
-  document.getElementById('preview').innerHTML = `<div class="empty-state"><div class="empty-glyph">▦▦▦</div><p>Odhlásený. Prihláste sa znova.</p></div>`;
+  document.getElementById('preview').innerHTML = '<div class="empty-state"><div class="empty-glyph">&#x25a6;&#x25a6;&#x25a6;</div><p>Odhlaseny. Prihlasite sa znova.</p></div>';
   document.getElementById('employeeBlockWrap').innerHTML = '';
   document.getElementById('printMeta').textContent = '';
   document.getElementById('employeeDisplay').value = '';
-  document.getElementById('docDisplayTitle').textContent = 'Podklad pre výplatu premenlivých zložiek mzdy';
-  document.getElementById('printBtn').disabled = true;
-  document.getElementById('printBtnTop').disabled = true;
+  document.getElementById('docDisplayTitle').textContent = 'Podklad pre vyplatu premenlivych zloziek mzdy';
   hideStatus();
-}
-
-function resetSelects() {
-  // Reset custom folder dropdown
-  document.getElementById('folderSelect').value = '';
-  document.getElementById('folderSelectTrigger').textContent = '— Najprv sa prihláste —';
-  document.getElementById('folderSelectTrigger').className = 'custom-select-trigger disabled';
-  document.getElementById('folderSelectDropdown').innerHTML = '';
-  document.getElementById('folderSelectDropdown').classList.remove('open');
-  // Reset sheet select
-  const ss = document.getElementById('sheetSelect');
-  ss.innerHTML = '<option value="">— Vyberte zamestnanca —</option>';
-  ss.disabled = true;
 }
 
 function enableInputs() {
@@ -717,29 +691,38 @@ function disableInputs() {
   ['sheetTab','monthInput','employeeDisplay'].forEach(id => document.getElementById(id).disabled = true);
 }
 
+function resetSelects() {
+  document.getElementById('folderSelect').value = '';
+  document.getElementById('folderSelectTrigger').textContent = '— Najprv sa prihlasite —';
+  document.getElementById('folderSelectTrigger').className = 'custom-select-trigger disabled';
+  document.getElementById('folderSelectDropdown').innerHTML = '';
+  document.getElementById('folderSelectDropdown').classList.remove('open');
+  const ss = document.getElementById('sheetSelect');
+  ss.innerHTML = '<option value="">— Vyberte zamestnanca —</option>';
+  ss.disabled = true;
+}
+
 // -- DRIVE FOLDER LOADING ---------------------------------
 async function loadFolders() {
-  document.getElementById('folderSelectTrigger').textContent = 'Načítavam…';
+  document.getElementById('folderSelectTrigger').textContent = 'Nacitavam...';
   document.getElementById('folderSelectTrigger').className = 'custom-select-trigger disabled';
 
   try {
-    const q = encodeURIComponent(`'${ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
-    const resp = await gFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=name&fields=files(id,name,folderColorRgb)&pageSize=200`);
+    const q = encodeURIComponent("'" + ROOT_FOLDER_ID + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false");
+    const resp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&orderBy=name&fields=files(id,name,folderColorRgb)&pageSize=200');
     const data = await resp.json();
-
     if (data.error) throw new Error(data.error.message);
 
     const folders = data.files || [];
-    if (!folders.length) throw new Error('V priečinku neboli nájdené žiadne podpriečinky.');
+    if (!folders.length) throw new Error('V priecinku neboli najdene ziadne podpriecinky.');
 
     const dropdown = document.getElementById('folderSelectDropdown');
     const trigger  = document.getElementById('folderSelectTrigger');
     dropdown.innerHTML = '';
 
-    folders.forEach(f => {
+    folders.forEach(function(f) {
       const opt = document.createElement('div');
       opt.className = 'custom-select-option';
-      opt.dataset.value = f.id;
 
       const dot = document.createElement('span');
       dot.className = 'folder-color-dot';
@@ -750,13 +733,12 @@ async function loadFolders() {
       lbl.textContent = f.name;
       opt.appendChild(lbl);
 
-      opt.addEventListener('click', () => {
-        dropdown.querySelectorAll('.custom-select-option').forEach(o => o.classList.remove('selected'));
+      opt.addEventListener('click', function() {
+        dropdown.querySelectorAll('.custom-select-option').forEach(function(o) { o.classList.remove('selected'); });
         opt.classList.add('selected');
         trigger.innerHTML = '';
-        const d2 = dot.cloneNode(true);
-        trigger.appendChild(d2);
-        trigger.appendChild(document.createTextNode(\` \${f.name}\`));
+        trigger.appendChild(dot.cloneNode(true));
+        trigger.appendChild(document.createTextNode(' ' + f.name));
         trigger.classList.remove('open');
         dropdown.classList.remove('open');
         document.getElementById('folderSelect').value = f.id;
@@ -768,22 +750,22 @@ async function loadFolders() {
 
     trigger.className = 'custom-select-trigger';
     trigger.textContent = '— Vyberte zamestnanca —';
-    trigger.onclick = (e) => {
+    trigger.onclick = function(e) {
       e.stopPropagation();
       trigger.classList.toggle('open');
       dropdown.classList.toggle('open');
     };
 
-    document.addEventListener('click', () => {
+    document.addEventListener('click', function() {
       trigger.classList.remove('open');
       dropdown.classList.remove('open');
     });
 
-    showStatus(`✓ Načítaných ${folders.length} zamestnancov.`, 'ok');
+    showStatus('Nacitanych ' + folders.length + ' zamestnancov.', 'ok');
 
   } catch(e) {
-    document.getElementById('folderSelectTrigger').textContent = 'Chyba načítania';
-    showStatus('Chyba načítania priečinkov: ' + e.message, 'error');
+    document.getElementById('folderSelectTrigger').textContent = 'Chyba nacitania';
+    showStatus('Chyba nacitania priecinkov: ' + e.message, 'error');
   }
 }
 
@@ -799,29 +781,26 @@ async function onFolderChange() {
     return;
   }
 
-  sheetSel.innerHTML = '<option value="">Načítavam tabuľky…</option>';
+  sheetSel.innerHTML = '<option value="">Nacitavam tabulky...</option>';
   sheetSel.disabled = true;
-  showStatus('Načítavam tabuľky…', 'loading');
+  showStatus('Nacitavam tabulky...', 'loading');
 
   try {
-    if (!accessToken) throw new Error('Nie ste prihlásený — token chýba.');
-
-    const q = encodeURIComponent(`'${folderId}' in parents and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
-    const url = `https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=name&fields=files(id,name)&pageSize=200`;
-    const resp = await gFetch(url);
+    if (!accessToken) throw new Error('Nie ste prihlaseny — token chyba.');
+    const q = encodeURIComponent("'" + folderId + "' in parents and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
+    const resp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&orderBy=name&fields=files(id,name)&pageSize=200');
     const data = await resp.json();
-
-    if (data.error) throw new Error(`Drive API: ${data.error.code} — ${data.error.message}`);
+    if (data.error) throw new Error('Drive API: ' + data.error.code + ' — ' + data.error.message);
 
     const sheets = data.files || [];
     if (!sheets.length) {
-      sheetSel.innerHTML = '<option value="">Žiadne tabuľky v priečinku</option>';
-      showStatus('V priečinku neboli nájdené žiadne tabuľky.', 'error');
+      sheetSel.innerHTML = '<option value="">Ziadne tabulky v priecinku</option>';
+      showStatus('V priecinku neboli najdene ziadne tabulky.', 'error');
       return;
     }
 
-    sheetSel.innerHTML = '<option value="">— Vyberte tabuľku —</option>';
-    sheets.forEach(s => {
+    sheetSel.innerHTML = '<option value="">— Vyberte tabulku —</option>';
+    sheets.forEach(function(s) {
       const opt = document.createElement('option');
       opt.value = s.id;
       opt.textContent = s.name;
@@ -829,10 +808,428 @@ async function onFolderChange() {
     });
     sheetSel.disabled = false;
     sheetSel.addEventListener('change', onSheetChange);
-    showStatus(`✓ Načítaných ${sheets.length} tabuliek.`, 'ok');
+    showStatus('Nacitanych ' + sheets.length + ' tabuliek.', 'ok');
 
   } catch(e) {
-    sheetSel.innerHTML = '<option value="">Chyba načítania</option>';
+    sheetSel.innerHTML = '<option value="">Chyba nacitania</option>';
     showStatus('Chyba: ' + e.message, 'error');
   }
 }
+
+function onSheetChange() {
+  const val = document.getElementById('sheetSelect').value;
+  if (!val) {
+    selectedSheetId = null;
+    disableInputs();
+    document.getElementById('zapisBtn').disabled = true;
+    document.getElementById('printBtn').disabled = true;
+    document.getElementById('printBtnTop').disabled = true;
+    return;
+  }
+  selectedSheetId = val;
+  enableInputs();
+  fetchRows();
+}
+
+// -- HELPERS ----------------------------------------------
+function parseRows(str) {
+  const nums = new Set();
+  str.split(',').forEach(function(part) {
+    part = part.trim();
+    const range = part.match(/^(\d+)\s*[-]\s*(\d+)$/);
+    if (range) { const a=+range[1],b=+range[2]; for(let i=Math.min(a,b);i<=Math.max(a,b);i++) nums.add(i); }
+    else if (/^\d+$/.test(part)) nums.add(+part);
+  });
+  return [...nums].sort(function(a,b){return a-b;});
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('statusMsg');
+  el.style.display = 'block'; el.className = 'status-msg s-' + type; el.textContent = msg;
+}
+function hideStatus() { document.getElementById('statusMsg').style.display = 'none'; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+async function gFetch(url) {
+  return fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+}
+
+// -- EFFECTIVE VALUE (I - K, clamped to 0) ----------------
+function getEffectiveValue(data) {
+  const colI = String(data[8] || '').trim();
+  if (colI === '') return null;
+  const numI = parseFloat(colI.replace(',', '.'));
+  if (isNaN(numI)) return null;
+  const colK = String(data[10] || '').trim();
+  const numK = colK !== '' ? parseFloat(colK.replace(',', '.')) : 0;
+  const result = numI - (isNaN(numK) ? 0 : numK);
+  return result < 0 ? 0 : result;
+}
+
+function isAvailable(row) {
+  const val = getEffectiveValue(row.data);
+  if (val === null) return false;
+  if (val === 0) return false;
+  return true;
+}
+
+// -- FETCH ROWS -------------------------------------------
+async function fetchRows() {
+  if (!accessToken)     { showStatus('Najprv sa prihlasite.', 'error'); return; }
+  if (!selectedSheetId) { showStatus('Vyberte tabulku.', 'error'); return; }
+
+  hideStatus();
+  const tabName = document.getElementById('sheetTab').value.trim();
+  const month   = document.getElementById('monthInput').value.trim();
+  const btn = document.getElementById('zapisBtn');
+  btn.disabled = true;
+  showStatus('Nacitavam data z tabulky...', 'loading');
+
+  try {
+    const metaResp = await gFetch('https://sheets.googleapis.com/v4/spreadsheets/' + selectedSheetId);
+    const meta = await metaResp.json();
+    if (meta.error) throw new Error(meta.error.message);
+
+    let sheet;
+    if (tabName) {
+      sheet = meta.sheets.find(function(s) { return s.properties.title.toLowerCase() === tabName.toLowerCase(); });
+      if (!sheet) throw new Error('Zalozka "' + tabName + '" nenajdena. Dostupne: ' + meta.sheets.map(function(s){return s.properties.title;}).join(', '));
+    } else {
+      sheet = meta.sheets[0];
+    }
+
+    const sheetTitle = sheet.properties.title;
+    lastSheetTitle = sheetTitle;
+
+    const nameResp = await gFetch('https://sheets.googleapis.com/v4/spreadsheets/' + selectedSheetId + '/values/' + encodeURIComponent("'" + sheetTitle + "'!A1:H2"));
+    const nameData = await nameResp.json();
+    let employeeName = '';
+    if (nameData.values) {
+      const skipWords = ['datum','cinnost','cas','narok','meno','name','zamestnanec','employee','od','do','nv','schvalene','vyplatu'];
+      outer: for (const row of nameData.values) {
+        for (const cell of row) {
+          const c = String(cell||'').trim();
+          if (!c) continue;
+          if (skipWords.some(function(w){ return c.toLowerCase().includes(w); })) continue;
+          employeeName = c; break outer;
+        }
+      }
+    }
+
+    const dataResp = await gFetch('https://sheets.googleapis.com/v4/spreadsheets/' + selectedSheetId + '/values/' + encodeURIComponent("'" + sheetTitle + "'!A5:K1000"));
+    const data = await dataResp.json();
+    if (data.error) throw new Error(data.error.message);
+
+    const rawRows = data.values || [];
+    if (!rawRows.length) throw new Error('V tabulke neboli najdene ziadne data od riadku 5.');
+
+    const allRows = rawRows.map(function(rowData, idx) {
+      return { rowNum: idx + 5, data: rowData };
+    });
+
+    const rows = allRows.filter(function(r) {
+      if (!r.data || r.data.length === 0) return false;
+      return [0, 1, 2, 3, 8].some(function(colIdx) {
+        const val = String(r.data[colIdx] !== undefined ? r.data[colIdx] : '').replace(/[\s\u00a0\u200b\u200c\u200d\ufeff]/g, '');
+        return val !== '';
+      });
+    });
+
+    document.getElementById('employeeDisplay').value = employeeName || '';
+
+    const titleEl = document.getElementById('docDisplayTitle');
+    titleEl.textContent = month
+      ? 'Podklad pre vyplatu premenlivych zloziek mzdy za mesiac ' + month
+      : 'Podklad pre vyplatu premenlivych zloziek mzdy';
+
+    document.getElementById('printMeta').textContent =
+      meta.properties.title + ' > ' + sheetTitle + '  .  ' + new Date().toLocaleString('sk-SK');
+
+    lastIncludedRows = [];
+    renderTable(rows, employeeName);
+
+    const availableCount = rows.filter(function(r) { return isAvailable(r); }).length;
+    showStatus('Nacitanych ' + rows.length + ' riadkov, ' + availableCount + ' dostupnych na vyber.', 'ok');
+
+    document.getElementById('printBtn').disabled = false;
+    document.getElementById('printBtnTop').disabled = false;
+
+  } catch(e) {
+    let msg = e.message;
+    if (msg.includes('403')) msg = 'Pristup zamietnuty.';
+    if (msg.includes('401')) msg = 'Relacia vyprsala. Odhlaste sa a prihlasite znova.';
+    showStatus('Chyba: ' + msg, 'error');
+  }
+}
+
+// -- ZAPÍSAŤ ČERPANIE -------------------------------------
+async function zapisatCerpanie() {
+  if (!accessToken)             { showStatus('Najprv sa prihlasite.', 'error'); return; }
+  if (!selectedSheetId)         { showStatus('Najprv nacitajte riadky.', 'error'); return; }
+  if (!lastIncludedRows.length) { showStatus('Ziadne riadky na zapis.', 'error'); return; }
+
+  const month = document.getElementById('monthInput').value.trim();
+  if (!month) { showStatus('Zadajte mesiac pred zapisom.', 'error'); return; }
+
+  const year = new Date().getFullYear();
+  const mesiacRok = month + ' ' + year;
+
+  if (!confirm('Zapisat cerpanie do tabulky?\n\n' + lastIncludedRows.length + ' riadkov, mesiac: ' + mesiacRok + '\nK = kumulativny sucet, L = historia cerpania\n\nTato akcia je nevratna.')) return;
+
+  const btn = document.getElementById('zapisBtn');
+  btn.disabled = true;
+  btn.textContent = 'Zapisujem...';
+  showStatus('Zapisujem do tabulky...', 'loading');
+
+  try {
+    const rowNums = lastIncludedRows.map(function(r) { return r.rowNum; });
+    const minRow = Math.min.apply(null, rowNums);
+    const maxRow = Math.max.apply(null, rowNums);
+    const existingResp = await gFetch(
+      'https://sheets.googleapis.com/v4/spreadsheets/' + selectedSheetId + '/values/' + encodeURIComponent("'" + lastSheetTitle + "'!J" + minRow + ":L" + maxRow)
+    );
+    const existingData = await existingResp.json();
+    const existingRows = existingData.values || [];
+
+    const existingL = {};
+    const existingK = {};
+    existingRows.forEach(function(row, idx) {
+      const rNum = minRow + idx;
+      existingK[rNum] = String(row[1] || '').trim();
+      existingL[rNum] = String(row[2] || '').trim();
+    });
+
+    const writeData = lastIncludedRows.map(function(item) {
+      const rowNum = item.rowNum;
+      const selectedVal = item.selectedVal;
+      const oldK = existingK[rowNum] !== undefined ? parseFloat(String(existingK[rowNum]).replace(',', '.')) : 0;
+      const newK = (isNaN(oldK) ? 0 : oldK) + selectedVal;
+      const newKStr = Number.isInteger(newK) ? String(newK) : newK.toFixed(2).replace('.', ',');
+      const selLabel = Number.isInteger(selectedVal) ? String(selectedVal) : selectedVal.toFixed(1).replace('.', ',');
+      const newEntry = mesiacRok + ' - ' + selLabel + ' hod.';
+      const oldL = existingL[rowNum] || '';
+      const newL = oldL ? oldL + ', ' + newEntry : newEntry;
+      return {
+        range: "'" + lastSheetTitle + "'!J" + rowNum + ":L" + rowNum,
+        values: [[ 'Platene', newKStr, newL ]]
+      };
+    });
+
+    const resp = await fetch(
+      'https://sheets.googleapis.com/v4/spreadsheets/' + selectedSheetId + '/values:batchUpdate',
+      {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data: writeData })
+      }
+    );
+
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error.message);
+
+    showStatus('Cerpanie zapisane do ' + lastIncludedRows.length + ' riadkov (stlpce J-L). Obnovovanie dat...', 'ok');
+    btn.textContent = 'Obnovovanie...';
+
+    try {
+      await fetchRows();
+      showStatus('Zapisane a data obnovene.', 'ok');
+    } catch(refetchErr) {
+      showStatus('Zapisane. Obnovenie zlyhalo: ' + refetchErr.message, 'ok');
+    }
+
+  } catch(e) {
+    let msg = e.message;
+    if (msg.includes('403')) msg = 'Pristup zamietnuty. Skontrolujte opravnenia na zapis do tabulky.';
+    if (msg.includes('401')) msg = 'Relacia vyprsala. Odhlaste sa a prihlasite znova.';
+    showStatus('Chyba zapisu: ' + msg, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Zapisat cerpanie ->';
+  }
+}
+
+// -- PRINT ------------------------------------------------
+function printDoc() {
+  document.querySelectorAll('tbody tr').forEach(function(tr) { tr.classList.remove('row-checked-print'); });
+  const swaps = [];
+  document.querySelectorAll('.row-checkbox:checked').forEach(function(cb) {
+    const tr = cb.closest('tr');
+    tr.classList.add('row-checked-print');
+    const rowNum = cb.dataset.rowNum;
+    const sel = document.querySelector('.subtract-select[data-row-num="' + rowNum + '"]');
+    if (sel) {
+      const selectedVal = parseFloat(sel.value);
+      const display = Number.isInteger(selectedVal) ? String(selectedVal) : selectedVal.toFixed(1).replace('.', ',');
+      const dataCells = tr.querySelectorAll('td:not(.screen-only)');
+      if (dataCells.length > 0) {
+        const lastCell = dataCells[dataCells.length - 1];
+        swaps.push({ cell: lastCell, original: lastCell.textContent });
+        lastCell.textContent = display;
+      }
+    }
+  });
+  window.print();
+  swaps.forEach(function(s) { s.cell.textContent = s.original; });
+}
+
+// -- RENDER TABLE -----------------------------------------
+function updateTotal() {
+  document.querySelectorAll('.row-checkbox').forEach(function(cb) {
+    const tr = cb.closest('tr');
+    if (cb.checked) tr.classList.add('row-checked');
+    else tr.classList.remove('row-checked');
+  });
+
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  let total = 0;
+  checked.forEach(function(cb) {
+    const rowNum = cb.dataset.rowNum;
+    const sel = document.querySelector('.subtract-select[data-row-num="' + rowNum + '"]');
+    const raw = sel ? sel.value : cb.dataset.colI;
+    const val = parseFloat(String(raw || '').replace(',', '.'));
+    if (!isNaN(val)) total += val;
+  });
+
+  const fmt = Number.isInteger(total) ? String(total) : total.toFixed(2).replace('.', ',');
+  const el = document.getElementById('totalValue');
+  if (el) el.textContent = fmt;
+
+  lastIncludedRows = [];
+  checked.forEach(function(cb) {
+    const rowNum = parseInt(cb.dataset.rowNum);
+    const rowData = JSON.parse(cb.dataset.rowData);
+    const rowNumStr = cb.dataset.rowNum;
+    const sel = document.querySelector('.subtract-select[data-row-num="' + rowNumStr + '"]');
+    const selectedVal = sel ? parseFloat(sel.value) : parseFloat(cb.dataset.colI);
+    lastIncludedRows.push({ rowNum: rowNum, data: rowData, selectedVal: selectedVal });
+  });
+
+  document.getElementById('zapisBtn').disabled = lastIncludedRows.length === 0;
+  document.getElementById('zapisBtn').textContent = 'Zapisat cerpanie ->';
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.row-checkbox').forEach(function(box) {
+    box.checked = cb.checked;
+    const sel = document.querySelector('.subtract-select[data-row-num="' + box.dataset.rowNum + '"]');
+    if (sel) sel.disabled = !cb.checked;
+  });
+  updateTotal();
+}
+
+function renderTable(rows, employeeName) {
+  const wrap = document.getElementById('employeeBlockWrap');
+  const displayName = document.getElementById('employeeDisplay').value.trim() || employeeName;
+  wrap.innerHTML = displayName ? '<div class="employee-block"><div><div class="employee-label">Zamestnanec</div><div class="employee-value">' + esc(displayName) + '</div></div></div>' : '';
+
+  const preview = document.getElementById('preview');
+  preview.innerHTML = '';
+
+  const tableWrap = document.createElement('div');
+  tableWrap.className = 'data-table-wrap';
+
+  const table = document.createElement('table');
+  table.className = 'data-table';
+  table.innerHTML = '<thead><tr><th class="col-check screen-only"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" title="Vybrat vsetky"></th><th class="col-rownum screen-only">#</th>' + COLUMNS.map(function(c){return '<th>' + esc(c) + '</th>';}).join('') + '</tr></thead>';
+
+  const tbody = document.createElement('tbody');
+
+  rows.forEach(function(item) {
+    const rowNum = item.rowNum;
+    const data = item.data;
+    const available = isAvailable({ rowNum: rowNum, data: data });
+    const effectiveVal = getEffectiveValue(data);
+
+    const tr = document.createElement('tr');
+    if (!available) tr.className = 'row-greyed';
+
+    // Checkbox + dropdown cell
+    const checkTd = document.createElement('td');
+    checkTd.className = 'col-check screen-only';
+    checkTd.style.whiteSpace = 'nowrap';
+    if (available && effectiveVal !== null) {
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'row-checkbox';
+      cb.dataset.rowNum = rowNum;
+      cb.dataset.colI = String(effectiveVal);
+      cb.dataset.rowData = JSON.stringify(data);
+
+      const sel = document.createElement('select');
+      sel.className = 'subtract-select screen-only';
+      sel.dataset.rowNum = rowNum;
+      sel.disabled = true;
+      const steps = Math.round(effectiveVal / 0.5);
+      for (let i = 1; i <= steps; i++) {
+        const v = i * 0.5;
+        const opt = document.createElement('option');
+        const label = Number.isInteger(v) ? String(v) : v.toFixed(1).replace('.', ',');
+        opt.value = String(v);
+        opt.textContent = label + ' hod.';
+        if (v === effectiveVal) opt.selected = true;
+        sel.appendChild(opt);
+      }
+
+      sel.onchange = function() {
+        cb.dataset.colI = this.value;
+        updateTotal();
+      };
+
+      cb.onchange = function() {
+        sel.disabled = !this.checked;
+        updateTotal();
+      };
+
+      checkTd.appendChild(cb);
+      checkTd.appendChild(document.createTextNode(' '));
+      checkTd.appendChild(sel);
+    }
+    tr.appendChild(checkTd);
+
+    // Row number cell
+    const numTd = document.createElement('td');
+    numTd.className = 'col-rownum screen-only';
+    numTd.textContent = rowNum;
+    tr.appendChild(numTd);
+
+    // Data cells
+    COL_INDICES.forEach(function(colIdx, i) {
+      const td = document.createElement('td');
+      if (i < 4) {
+        const val = String(data[colIdx] || '').trim();
+        td.className = val ? '' : 'td-empty';
+        td.textContent = val || '—';
+      } else {
+        const effective = getEffectiveValue(data);
+        let display;
+        if (effective === null) {
+          display = '—';
+        } else {
+          display = Number.isInteger(effective) ? String(effective) : effective.toFixed(2).replace('.', ',');
+        }
+        td.className = display === '—' ? 'td-empty' : '';
+        td.textContent = display;
+      }
+      tr.appendChild(td);
+    });
+
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  tableWrap.appendChild(table);
+  preview.appendChild(tableWrap);
+
+  // Total row
+  const totalDiv = document.createElement('div');
+  totalDiv.className = 'total-row';
+  totalDiv.innerHTML = '<span class="total-label">Spolu pre vyplatu:</span><span class="total-value" id="totalValue">0</span><span class="total-label" style="margin-left:4px">hod.</span>';
+  preview.appendChild(totalDiv);
+
+  // Footer
+  const footer = document.createElement('div');
+  footer.className = 'doc-footer';
+  footer.innerHTML = '<div class="confirmation-text">Svojim podpisom potvrdzujem, ze menovany tyzdenne odpracoval 37,5 hod.</div><div class="signature-row"><div class="signature-item">Vykazuje:<span class="signature-line"></span></div><div class="signature-item" style="margin-top:36px">Schvalil:<span class="signature-line"></span></div></div>';
+  preview.appendChild(footer);
+}
+
+</script>
+</html>
