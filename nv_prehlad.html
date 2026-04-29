@@ -463,21 +463,28 @@ async function fetchAll() {
     const folders = foldersData.files || [];
     if (!folders.length) throw new Error('Žiadne priečinky nenájdené.');
 
+    const debugLines = ['Nájdených priečinkov: ' + folders.length];
     setProgress(10, 'Nájdených ' + folders.length + ' priečinkov. Hľadám tabuľky...');
 
-    // 2. For each folder, find sheet named TARGET_SHEET
+    // 2. For each folder, find file named TARGET_FILE
     for (let fi = 0; fi < folders.length; fi++) {
       const folder = folders[fi];
       const pct = 10 + Math.round((fi / folders.length) * 75);
       setProgress(pct, 'Prehľadávam: ' + folder.name + ' (' + (fi+1) + '/' + folders.length + ')');
 
-      const sq = encodeURIComponent("'" + folder.id + "' in parents and name='" + TARGET_FILE + "' and trashed=false");
-      const sheetsResp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + sq + '&fields=files(id,name)&pageSize=5');
+      // Search ALL files in folder (no mime filter) to catch .xlsx
+      const sq = encodeURIComponent("'" + folder.id + "' in parents and trashed=false");
+      const sheetsResp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + sq + '&fields=files(id,name,mimeType)&pageSize=50');
       const sheetsData = await sheetsResp.json();
-      if (sheetsData.error) continue;
+      if (sheetsData.error) { debugLines.push(folder.name + ': Drive error ' + sheetsData.error.message); continue; }
 
-      const sheets = sheetsData.files || [];
-      if (!sheets.length) continue;
+      const allFiles = sheetsData.files || [];
+      debugLines.push(folder.name + ': ' + allFiles.length + ' súborov — ' + allFiles.map(function(f){return f.name;}).join(', '));
+
+      // Find target file by name
+      const sheets = allFiles.filter(function(f) { return f.name === TARGET_FILE; });
+      if (!sheets.length) { debugLines.push('  -> súbor ' + TARGET_FILE + ' NENÁJDENÝ'); continue; }
+      debugLines.push('  -> súbor nájdený: ' + sheets[0].name + ' (' + sheets[0].mimeType + ')');
 
       // Found the sheet — read L1 and name from A1:H2
       const sheetId = sheets[0].id;
@@ -523,13 +530,14 @@ async function fetchAll() {
 
     if (!results.length) {
       showStatus('Žiadne záznamy s hodnotou > 0 neboli nájdené.', 'error');
-      renderEmpty();
+      renderDebug(debugLines);
     } else {
       // Sort by value descending
       results.sort(function(a, b) { return b.value - a.value; });
       const total = results.reduce(function(s, r) { return s + r.value; }, 0);
       const totalStr = Number.isInteger(total) ? String(total) : total.toFixed(2).replace('.', ',');
       showStatus('Nájdených ' + results.length + ' zamestnancov.', 'ok');
+      debugLines.push('Výsledky: ' + results.length);
       document.getElementById('totalChip').style.display = 'block';
       document.getElementById('totalChip').innerHTML = 'Celkom: <span>' + totalStr + ' hod.</span>';
       renderResults(results);
@@ -546,6 +554,15 @@ async function fetchAll() {
 }
 
 // ── RENDER ────────────────────────────────────────────
+function renderDebug(lines) {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div style="padding:20px;font-size:11px;font-family:monospace;background:#1a1814;color:#f5f2eb;border-radius:8px;white-space:pre-wrap;line-height:1.8">' +
+    '<strong style="color:#e8631f">DEBUG LOG</strong>
+
+' + lines.map(function(l){return escHtml(l);}).join('
+') + '</div>';
+}
+
 function renderEmpty() {
   document.getElementById('content').innerHTML = '<div class="empty-state"><div class="empty-glyph">0</div><p>Žiadne záznamy s hodnotou väčšou ako 0.</p></div>';
 }
