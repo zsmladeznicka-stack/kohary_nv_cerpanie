@@ -1010,7 +1010,7 @@ async function zapisatCerpanie() {
       const newL = oldL ? oldL + ', ' + newEntry : newEntry;
       return {
         range: "'" + lastSheetTitle + "'!J" + rowNum + ":L" + rowNum,
-        values: [[ 'Platene', newKStr, newL ]]
+        values: [[ 'Platené', newKStr, newL ]]
       };
     });
 
