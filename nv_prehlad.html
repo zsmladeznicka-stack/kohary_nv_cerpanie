@@ -307,7 +307,7 @@
 <div class="header">
   <div>
     <div class="header-title">NV <span>Prehľad</span></div>
-    <div class="header-sub">NV_2025_2026_ÚJ · Zostatok na výplatu</div>
+    <div class="header-sub">NV_2025_2026_ÚJ.xlsx · Náhradné voľno · Zostatok</div>
   </div>
   <div class="header-right">
     <div id="authArea">
@@ -346,11 +346,12 @@
   </div>
 </div>
 
-<div class="footer">NV Prehľad · NV_2025_2026_ÚJ · Automaticky generovaný prehľad</div>
+<div class="footer">NV Prehľad · NV_2025_2026_ÚJ.xlsx · Automaticky generovaný prehľad</div>
 
 <script>
 const ROOT_FOLDER_ID = '0B784zT_u70KHYTlkQ214d2ZWVm8';
-const TARGET_SHEET   = 'NV_2025_2026_ÚJ';
+const TARGET_FILE    = 'NV_2025_2026_ÚJ.xlsx';
+const TARGET_TAB     = 'Náhradné voľno';
 const CLIENT_ID      = '249918391952-ppn7a4c88qa0fl47g21k2ldd3957a0c0.apps.googleusercontent.com';
 
 const OAUTH_SCOPES = [
@@ -470,7 +471,7 @@ async function fetchAll() {
       const pct = 10 + Math.round((fi / folders.length) * 75);
       setProgress(pct, 'Prehľadávam: ' + folder.name + ' (' + (fi+1) + '/' + folders.length + ')');
 
-      const sq = encodeURIComponent("'" + folder.id + "' in parents and mimeType='application/vnd.google-apps.spreadsheet' and name='" + TARGET_SHEET.replace(/'/g, "\\'") + "' and trashed=false");
+      const sq = encodeURIComponent("'" + folder.id + "' in parents and name='" + TARGET_FILE + "' and trashed=false");
       const sheetsResp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + sq + '&fields=files(id,name)&pageSize=5');
       const sheetsData = await sheetsResp.json();
       if (sheetsData.error) continue;
@@ -483,14 +484,14 @@ async function fetchAll() {
 
       try {
         // Fetch L1
-        const l1Resp = await gFetch('https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent("'" + TARGET_SHEET + "'!L1"));
+        const l1Resp = await gFetch('https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent("'" + TARGET_TAB + "'!L1"));
         const l1Data = await l1Resp.json();
         const l1Raw = (l1Data.values && l1Data.values[0] && l1Data.values[0][0]) ? String(l1Data.values[0][0]).trim() : '';
         const l1Val = parseFloat(l1Raw.replace(',', '.'));
         if (isNaN(l1Val) || l1Val <= 0) continue; // skip zero or empty
 
         // Fetch name from A1:H2
-        const nameResp = await gFetch('https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent("'" + TARGET_SHEET + "'!A1:H2"));
+        const nameResp = await gFetch('https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent("'" + TARGET_TAB + "'!A1:H2"));
         const nameData = await nameResp.json();
         let employeeName = folder.name; // fallback to folder name
         if (nameData.values) {
