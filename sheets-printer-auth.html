@@ -133,6 +133,42 @@
   .field-label { font-size: 9px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--muted); }
 
   /* Styled select dropdowns */
+  /* ── CUSTOM FOLDER DROPDOWN ── */
+  .custom-select-wrap {
+    position: relative; width: 100%;
+  }
+  .custom-select-trigger {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px; padding: 9px 28px 9px 11px; border-radius: 6px;
+    cursor: pointer; transition: border-color 0.2s;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b6b7e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  .custom-select-trigger:hover { border-color: var(--accent); }
+  .custom-select-trigger.disabled { opacity: 0.38; cursor: not-allowed; pointer-events: none; }
+  .custom-select-trigger.open { border-color: var(--accent); border-radius: 6px 6px 0 0; }
+  .custom-select-dropdown {
+    display: none; position: absolute; top: 100%; left: 0; right: 0;
+    background: var(--surface2); border: 1px solid var(--accent);
+    border-top: none; border-radius: 0 0 6px 6px;
+    max-height: 220px; overflow-y: auto; z-index: 100;
+  }
+  .custom-select-dropdown.open { display: block; }
+  .custom-select-option {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 11px; cursor: pointer; font-size: 12px;
+    font-family: 'IBM Plex Mono', monospace; color: var(--text);
+    transition: background 0.1s;
+  }
+  .custom-select-option:hover { background: rgba(124,106,247,0.15); }
+  .custom-select-option.selected { background: rgba(124,106,247,0.1); color: var(--accent2); }
+  .folder-color-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+
   .field-select {
     background: var(--surface2); border: 1px solid var(--border);
     color: var(--text); font-family: 'IBM Plex Mono', monospace;
@@ -480,9 +516,11 @@
     <div class="field-group">
       <label class="field-label">Zamestnanec (priečinok)</label>
       <div id="folderSelectWrap">
-        <select class="field-select" id="folderSelect" disabled>
-          <option value="">— Najprv sa prihláste —</option>
-        </select>
+        <div class="custom-select-wrap" id="folderCustomWrap">
+          <div class="custom-select-trigger" id="folderSelectTrigger">— Najprv sa prihláste —</div>
+          <div class="custom-select-dropdown" id="folderSelectDropdown"></div>
+        </div>
+        <input type="hidden" id="folderSelect" value="">
       </div>
     </div>
 
@@ -658,9 +696,13 @@ function signOut() {
 }
 
 function resetSelects() {
-  const fs = document.getElementById('folderSelect');
-  fs.innerHTML = '<option value="">— Najprv sa prihláste —</option>';
-  fs.disabled = true;
+  // Reset custom folder dropdown
+  document.getElementById('folderSelect').value = '';
+  document.getElementById('folderSelectTrigger').textContent = '— Najprv sa prihláste —';
+  document.getElementById('folderSelectTrigger').className = 'custom-select-trigger disabled';
+  document.getElementById('folderSelectDropdown').innerHTML = '';
+  document.getElementById('folderSelectDropdown').classList.remove('open');
+  // Reset sheet select
   const ss = document.getElementById('sheetSelect');
   ss.innerHTML = '<option value="">— Vyberte zamestnanca —</option>';
   ss.disabled = true;
@@ -677,14 +719,12 @@ function disableInputs() {
 
 // -- DRIVE FOLDER LOADING ---------------------------------
 async function loadFolders() {
-  const folderSel = document.getElementById('folderSelect');
-  folderSel.innerHTML = '<option value="">Načítavam priečinky…</option>';
-  folderSel.disabled = true;
+  document.getElementById('folderSelectTrigger').textContent = 'Načítavam…';
+  document.getElementById('folderSelectTrigger').className = 'custom-select-trigger disabled';
 
   try {
-    // List all subfolders of ROOT_FOLDER_ID, sorted by name
     const q = encodeURIComponent(`'${ROOT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
-    const resp = await gFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=name&fields=files(id,name)&pageSize=200`);
+    const resp = await gFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=name&fields=files(id,name,folderColorRgb)&pageSize=200`);
     const data = await resp.json();
 
     if (data.error) throw new Error(data.error.message);
@@ -692,29 +732,63 @@ async function loadFolders() {
     const folders = data.files || [];
     if (!folders.length) throw new Error('V priečinku neboli nájdené žiadne podpriečinky.');
 
-    folderSel.innerHTML = '<option value="">— Vyberte zamestnanca —</option>';
+    const dropdown = document.getElementById('folderSelectDropdown');
+    const trigger  = document.getElementById('folderSelectTrigger');
+    dropdown.innerHTML = '';
+
     folders.forEach(f => {
-      const opt = document.createElement('option');
-      opt.value = f.id;
-      opt.textContent = f.name;
-      folderSel.appendChild(opt);
+      const opt = document.createElement('div');
+      opt.className = 'custom-select-option';
+      opt.dataset.value = f.id;
+
+      const dot = document.createElement('span');
+      dot.className = 'folder-color-dot';
+      dot.style.background = f.folderColorRgb || '#6b6b7e';
+      opt.appendChild(dot);
+
+      const lbl = document.createElement('span');
+      lbl.textContent = f.name;
+      opt.appendChild(lbl);
+
+      opt.addEventListener('click', () => {
+        dropdown.querySelectorAll('.custom-select-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        trigger.innerHTML = '';
+        const d2 = dot.cloneNode(true);
+        trigger.appendChild(d2);
+        trigger.appendChild(document.createTextNode(\` \${f.name}\`));
+        trigger.classList.remove('open');
+        dropdown.classList.remove('open');
+        document.getElementById('folderSelect').value = f.id;
+        onFolderChange();
+      });
+
+      dropdown.appendChild(opt);
     });
-    folderSel.disabled = false;
-    folderSel.onchange = onFolderChange;
-    // Fallback: also add via addEventListener
-    folderSel.addEventListener('change', onFolderChange);
-    folderSel.addEventListener('input', onFolderChange);
-    showStatus(`✓ Načítaných ${folders.length} zamestnancov. Vyberte meno.`, 'ok');
+
+    trigger.className = 'custom-select-trigger';
+    trigger.textContent = '— Vyberte zamestnanca —';
+    trigger.onclick = (e) => {
+      e.stopPropagation();
+      trigger.classList.toggle('open');
+      dropdown.classList.toggle('open');
+    };
+
+    document.addEventListener('click', () => {
+      trigger.classList.remove('open');
+      dropdown.classList.remove('open');
+    });
+
+    showStatus(`✓ Načítaných ${folders.length} zamestnancov.`, 'ok');
 
   } catch(e) {
-    folderSel.innerHTML = '<option value="">Chyba načítania</option>';
+    document.getElementById('folderSelectTrigger').textContent = 'Chyba načítania';
     showStatus('Chyba načítania priečinkov: ' + e.message, 'error');
   }
 }
 
 async function onFolderChange() {
   const folderId = document.getElementById('folderSelect').value;
-  showStatus('Vybrané: ' + document.getElementById('folderSelect').options[document.getElementById('folderSelect').selectedIndex].text + ' (' + folderId + ')', 'loading');
   const sheetSel = document.getElementById('sheetSelect');
   selectedSheetId = null;
   disableInputs();
@@ -762,477 +836,3 @@ async function onFolderChange() {
     showStatus('Chyba: ' + e.message, 'error');
   }
 }
-
-function onSheetChange() {
-  const val = document.getElementById('sheetSelect').value;
-  if (!val) {
-    selectedSheetId = null;
-    disableInputs();
-    document.getElementById('zapisBtn').disabled = true;
-    document.getElementById('printBtn').disabled = true;
-    document.getElementById('printBtnTop').disabled = true;
-    return;
-  }
-  selectedSheetId = val;
-  enableInputs();
-  fetchRows(); // auto-fetch when sheet selected
-}
-
-// -- HELPERS ----------------------------------------------
-function parseRows(str) {
-  const nums = new Set();
-  str.split(',').forEach(part => {
-    part = part.trim();
-    const range = part.match(/^(\d+)\s*[-–]\s*(\d+)$/);
-    if (range) { const a=+range[1],b=+range[2]; for(let i=Math.min(a,b);i<=Math.max(a,b);i++) nums.add(i); }
-    else if (/^\d+$/.test(part)) nums.add(+part);
-  });
-  return [...nums].sort((a,b)=>a-b);
-}
-
-function showStatus(msg, type) {
-  const el = document.getElementById('statusMsg');
-  el.style.display = 'block'; el.className = 'status-msg s-' + type; el.textContent = msg;
-}
-function hideStatus() { document.getElementById('statusMsg').style.display = 'none'; }
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-async function gFetch(url) {
-  return fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-}
-
-// -- FETCH ROWS -------------------------------------------
-async function fetchRows() {
-  if (!accessToken)     { showStatus('Najprv sa prihláste.', 'error'); return; }
-  if (!selectedSheetId) { showStatus('Vyberte tabuľku.', 'error'); return; }
-
-  hideStatus();
-  const tabName = document.getElementById('sheetTab').value.trim();
-  const month   = document.getElementById('monthInput').value.trim();
-
-  const btn = document.getElementById('zapisBtn');
-  btn.disabled = true;
-  showStatus('Načítavam dáta z tabuľky…', 'loading');
-
-  try {
-    const metaResp = await gFetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectedSheetId}`);
-    const meta = await metaResp.json();
-    if (meta.error) throw new Error(meta.error.message);
-
-    let sheet;
-    if (tabName) {
-      sheet = meta.sheets.find(s => s.properties.title.toLowerCase() === tabName.toLowerCase());
-      if (!sheet) throw new Error(`Záložka "${tabName}" nenájdená. Dostupné: ${meta.sheets.map(s=>s.properties.title).join(', ')}`);
-    } else {
-      sheet = meta.sheets[0];
-    }
-
-    const sheetTitle = sheet.properties.title;
-    lastSheetTitle = sheetTitle;
-
-    // Fetch employee name from A1:H2
-    const nameResp = await gFetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectedSheetId}/values/${encodeURIComponent("'" + sheetTitle + "'!A1:H2")}`);
-    const nameData = await nameResp.json();
-    let employeeName = '';
-    if (nameData.values) {
-      const skipWords = ['dátum','činnosť','čas','nárok','meno','name','zamestnanec','employee','od','do','nv','schválené','výplatu'];
-      outer: for (const row of nameData.values) {
-        for (const cell of row) {
-          const c = String(cell||'').trim();
-          if (!c) continue;
-          if (skipWords.some(w => c.toLowerCase().includes(w))) continue;
-          employeeName = c; break outer;
-        }
-      }
-    }
-
-    // Fetch all data from row 5 onwards, columns A:K
-    const dataResp = await gFetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectedSheetId}/values/${encodeURIComponent("'" + sheetTitle + "'!A5:K1000")}`);
-    const data = await dataResp.json();
-    if (data.error) throw new Error(data.error.message);
-
-    const rawRows = data.values || [];
-    if (!rawRows.length) throw new Error('V tabuľke neboli nájdené žiadne dáta od riadku 5.');
-
-    // Build row objects with original sheet row number (row 5 = index 0)
-    const allRows = rawRows.map((rowData, idx) => ({
-      rowNum: idx + 5,
-      data: rowData
-    }));
-
-    // Filter out rows where all relevant columns (A,B,C,D,I) are empty
-    const rows = allRows.filter(r => {
-      if (!r.data || r.data.length === 0) return false;
-      return [0, 1, 2, 3, 8].some(colIdx => {
-        const val = String(r.data[colIdx] ?? '').replace(/[\s\u00a0\u200b\u200c\u200d\ufeff]/g, '');
-        return val !== '';
-      });
-    });
-
-    document.getElementById('employeeDisplay').value = employeeName || '—';
-
-    const titleEl = document.getElementById('docDisplayTitle');
-    titleEl.textContent = month
-      ? `Podklad pre výplatu premenlivých zložiek mzdy za mesiac ${month}`
-      : 'Podklad pre výplatu premenlivých zložiek mzdy';
-
-    document.getElementById('printMeta').textContent =
-      `${meta.properties.title} › ${sheetTitle}  ·  ${new Date().toLocaleString('sk-SK')}`;
-
-    lastIncludedRows = []; // will be set dynamically by checkboxes
-    renderTable(rows, employeeName);
-
-    const availableCount = rows.filter(r => isAvailable(r)).length;
-    showStatus(`✓ Načítaných ${rows.length} riadkov, ${availableCount} dostupných na výber.`, 'ok');
-
-    document.getElementById('printBtn').disabled = false;
-    document.getElementById('printBtnTop').disabled = false;
-
-  } catch(e) {
-    let msg = e.message;
-    if (msg.includes('403')) msg = 'Prístup zamietnutý.';
-    if (msg.includes('401')) msg = 'Relácia vypršala. Odhláste sa a prihláste znova.';
-    showStatus('Chyba: ' + msg, 'error');
-  }
-}
-
-function getEffectiveValue(data) {
-  // Returns I - K. If K empty treat as 0. Negative results clamped to 0.
-  const colI = String(data[8] || '').trim();
-  if (colI === '') return null;
-  const numI = parseFloat(colI.replace(',', '.'));
-  if (isNaN(numI)) return null;
-  const colK = String(data[10] || '').trim();
-  const numK = colK !== '' ? parseFloat(colK.replace(',', '.')) : 0;
-  const result = numI - (isNaN(numK) ? 0 : numK);
-  return result < 0 ? 0 : result;
-}
-
-function isAvailable(row) {
-  const val = getEffectiveValue(row.data);
-  if (val === null) return false; // empty I
-  if (val === 0) return false;    // I - K = 0 (fully paid) or I = 0
-  return true;
-}
-
-
-async function zapisatCerpanie() {
-  if (!accessToken)              { showStatus('Najprv sa prihláste.', 'error'); return; }
-  if (!selectedSheetId)          { showStatus('Najprv načítajte riadky.', 'error'); return; }
-  if (!lastIncludedRows.length)  { showStatus('Žiadne riadky na zápis.', 'error'); return; }
-
-  const month = document.getElementById('monthInput').value.trim();
-  if (!month) { showStatus('Zadajte mesiac pred zápisom.', 'error'); return; }
-
-  const year = new Date().getFullYear();
-  const mesiacRok = `${month} ${year}`;
-
-  if (!confirm(`Zapísať čerpanie do tabuľky?\n\n${lastIncludedRows.length} riadkov, mesiac: ${mesiacRok}\nK = kumulatívny súčet, L = história čerpania\n\nTáto akcia je nevratná.`)) return;
-
-  const btn = document.getElementById('zapisBtn');
-  btn.disabled = true;
-  btn.textContent = 'Zapisujem…';
-  showStatus('Zapisujem do tabuľky…', 'loading');
-
-  try {
-    // First read existing L values for all rows we're about to write
-    const rowNums = lastIncludedRows.map(r => r.rowNum);
-    const minRow = Math.min(...rowNums);
-    const maxRow = Math.max(...rowNums);
-    const existingResp = await gFetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${selectedSheetId}/values/${encodeURIComponent("'" + lastSheetTitle + "'!J" + minRow + ":L" + maxRow)}`
-    );
-    const existingData = await existingResp.json();
-    const existingRows = existingData.values || [];
-
-    // Build a map of rowNum -> existing L value
-    const existingL = {};
-    const existingK = {};
-    existingRows.forEach((row, idx) => {
-      const rNum = minRow + idx;
-      existingK[rNum] = String(row[1] || '').trim(); // col K = index 1 in J:L range
-      existingL[rNum] = String(row[2] || '').trim(); // col L = index 2 in J:L range
-    });
-
-    const writeData = lastIncludedRows.map(({ rowNum, data: rowData, selectedVal }) => {
-      // Cumulative K: old K + selectedVal
-      const oldK = existingK[rowNum] !== undefined ? parseFloat(String(existingK[rowNum]).replace(',', '.')) : 0;
-      const newK = (isNaN(oldK) ? 0 : oldK) + selectedVal;
-      const newKStr = Number.isInteger(newK) ? String(newK) : newK.toFixed(2).replace('.', ',');
-
-      // Append to L: "mesiac rok - X hod." or append ", mesiac rok - X hod."
-      const selLabel = Number.isInteger(selectedVal) ? String(selectedVal) : selectedVal.toFixed(1).replace('.', ',');
-      const newEntry = `${mesiacRok} - ${selLabel} hod.`;
-      const oldL = existingL[rowNum] || '';
-      const newL = oldL ? `${oldL}, ${newEntry}` : newEntry;
-
-      return {
-        range: `'${lastSheetTitle}'!J${rowNum}:L${rowNum}`,
-        values: [[ 'Platené', newKStr, newL ]]
-      };
-    });
-
-    const resp = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${selectedSheetId}/values:batchUpdate`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data: writeData })
-      }
-    );
-
-    const result = await resp.json();
-    if (result.error) throw new Error(result.error.message);
-
-    showStatus(`✓ Čerpanie zapísané do ${lastIncludedRows.length} riadkov (stĺpce J–L). Obnovovanie dát…`, 'ok');
-    btn.textContent = '↻ Obnovovanie…';
-
-    // Refetch data to reflect new values from sheet
-    try {
-      await fetchRows();
-      showStatus(`✓ Zapísané a dáta obnovené.`, 'ok');
-    } catch(refetchErr) {
-      showStatus(`✓ Zapísané. Obnovenie zlyhalo: ${refetchErr.message}`, 'ok');
-    }
-
-  } catch(e) {
-    let msg = e.message;
-    if (msg.includes('403')) msg = 'Prístup zamietnutý. Skontrolujte oprávnenia na zápis do tabuľky.';
-    if (msg.includes('401')) msg = 'Relácia vypršala. Odhláste sa a prihláste znova.';
-    showStatus('Chyba zápisu: ' + msg, 'error');
-    btn.disabled = false;
-    btn.textContent = 'Zapísať čerpanie →';
-  }
-}
-
-// -- RENDER -----------------------------------------------
-function printDoc() {
-  // Mark checked rows for print
-  document.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('row-checked-print'));
-
-  // For each checked row, temporarily replace last cell text with selected dropdown value
-  const swaps = [];
-  document.querySelectorAll('.row-checkbox:checked').forEach(cb => {
-    const tr = cb.closest('tr');
-    tr.classList.add('row-checked-print');
-
-    const rowNum = cb.dataset.rowNum;
-    const sel = document.querySelector(`.subtract-select[data-row-num="${rowNum}"]`);
-    if (sel) {
-      const selectedVal = parseFloat(sel.value);
-      const display = Number.isInteger(selectedVal)
-        ? String(selectedVal)
-        : selectedVal.toFixed(1).replace('.', ',');
-      const dataCells = tr.querySelectorAll('td:not(.screen-only)');
-      if (dataCells.length > 0) {
-        const lastCell = dataCells[dataCells.length - 1];
-        swaps.push({ cell: lastCell, original: lastCell.textContent });
-        lastCell.textContent = display;
-      }
-    }
-  });
-
-  window.print();
-
-  // Restore original values after print dialog closes
-  swaps.forEach(({ cell, original }) => { cell.textContent = original; });
-}
-
-function updateTotal() {
-  // Update row highlight
-  document.querySelectorAll('.row-checkbox').forEach(cb => {
-    const tr = cb.closest('tr');
-    if (cb.checked) tr.classList.add('row-checked');
-    else tr.classList.remove('row-checked');
-  });
-
-  const checked = document.querySelectorAll('.row-checkbox:checked');
-  let total = 0;
-  checked.forEach(cb => {
-    // Use dropdown selected value if present, otherwise fall back to dataset.colI
-    const rowNum = cb.dataset.rowNum;
-    const sel = document.querySelector(`.subtract-select[data-row-num="${rowNum}"]`);
-    const raw = sel ? sel.value : cb.dataset.colI;
-    const val = parseFloat(String(raw || '').replace(',', '.'));
-    if (!isNaN(val)) total += val;
-  });
-  const fmt = Number.isInteger(total) ? total.toString() : total.toFixed(2).replace('.', ',');
-  const el = document.getElementById('totalValue');
-  if (el) el.textContent = fmt;
-
-  // Highlight checked rows, unhighlight unchecked
-  document.querySelectorAll('.row-checkbox').forEach(cb => {
-    const tr = cb.closest('tr');
-    if (cb.checked) {
-      tr.classList.add('row-checked');
-    } else {
-      tr.classList.remove('row-checked');
-    }
-  });
-
-  // Update lastIncludedRows for print and zapis
-  lastIncludedRows = [];
-  checked.forEach(cb => {
-    const rowNum = parseInt(cb.dataset.rowNum);
-    const rowData = JSON.parse(cb.dataset.rowData);
-    const sel = document.querySelector(`.subtract-select[data-row-num="${cb.dataset.rowNum}"]`);
-    const selectedVal = sel ? parseFloat(sel.value) : parseFloat(cb.dataset.colI);
-    lastIncludedRows.push({ rowNum, data: rowData, selectedVal });
-  });
-
-  document.getElementById('zapisBtn').disabled = lastIncludedRows.length === 0;
-  document.getElementById('zapisBtn').textContent = 'Zapísať čerpanie →';
-}
-
-function toggleSelectAll(cb) {
-  document.querySelectorAll('.row-checkbox').forEach(box => {
-    box.checked = cb.checked;
-    const sel = document.querySelector(`.subtract-select[data-row-num="${box.dataset.rowNum}"]`);
-    if (sel) sel.disabled = !cb.checked;
-  });
-  updateTotal();
-}
-
-function renderTable(rows, employeeName) {
-  // Employee block
-  const wrap = document.getElementById('employeeBlockWrap');
-  const displayName = document.getElementById('employeeDisplay').value.trim() || employeeName;
-  wrap.innerHTML = displayName ? `
-    <div class="employee-block">
-      <div>
-        <div class="employee-label">Zamestnanec</div>
-        <div class="employee-value">${esc(displayName)}</div>
-      </div>
-    </div>` : '';
-
-  const preview = document.getElementById('preview');
-  preview.innerHTML = '';
-
-  // Table
-  const tableWrap = document.createElement('div');
-  tableWrap.className = 'data-table-wrap';
-
-  const table = document.createElement('table');
-  table.className = 'data-table';
-
-  table.innerHTML = `<thead><tr>
-    <th class="col-check screen-only"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" title="Vybrať všetky"></th>
-    <th class="col-rownum screen-only">#</th>
-    ${COLUMNS.map(c => `<th>${esc(c)}</th>`).join('')}
-  </tr></thead>`;
-
-  const tbody = document.createElement('tbody');
-
-  rows.forEach(({ rowNum, data }) => {
-    const available = isAvailable({ rowNum, data });
-    const tr = document.createElement('tr');
-    if (!available) tr.className = 'row-greyed';
-
-    // Checkbox cell + subtract dropdown
-    const checkTd = document.createElement('td');
-    checkTd.className = 'col-check screen-only';
-    checkTd.style.whiteSpace = 'nowrap';
-    const effectiveVal = getEffectiveValue(data);
-    if (available && effectiveVal !== null) {
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.className = 'row-checkbox';
-      cb.dataset.rowNum = rowNum;
-      cb.dataset.colI = String(effectiveVal);
-      cb.dataset.rowData = JSON.stringify(data);
-
-      // Build dropdown with 0.5 steps up to effectiveVal, default = effectiveVal
-      const sel = document.createElement('select');
-      sel.className = 'subtract-select screen-only';
-      sel.dataset.rowNum = rowNum;
-      const steps = Math.round(effectiveVal / 0.5);
-      for (let i = 1; i <= steps; i++) {
-        const v = i * 0.5;
-        const opt = document.createElement('option');
-        const label = Number.isInteger(v) ? String(v) : v.toFixed(1).replace('.', ',');
-        opt.value = String(v);
-        opt.textContent = label + ' hod.';
-        if (v === effectiveVal) opt.selected = true;
-        sel.appendChild(opt);
-      }
-
-      // When dropdown changes, update the checkbox's colI and recalculate total
-      sel.onchange = function() {
-        cb.dataset.colI = this.value;
-        updateTotal();
-      };
-      sel.disabled = true; // disabled until checkbox is checked
-
-      cb.onchange = function() {
-        sel.disabled = !this.checked;
-        updateTotal();
-      };
-      checkTd.appendChild(cb);
-      checkTd.appendChild(document.createTextNode(' '));
-      checkTd.appendChild(sel);
-    }
-    tr.appendChild(checkTd);
-
-    // Row number cell
-    const numTd = document.createElement('td');
-    numTd.className = 'col-rownum screen-only';
-    numTd.textContent = rowNum;
-    tr.appendChild(numTd);
-
-    // Data cells A,B,C,D and effective value (I-K)
-    COL_INDICES.forEach((colIdx, i) => {
-      const td = document.createElement('td');
-      if (i < 4) {
-        // Columns A,B,C,D — show as-is
-        const val = String(data[colIdx] || '').trim();
-        td.className = val ? '' : 'td-empty';
-        td.textContent = val || '—';
-      } else {
-        // Last column: always show I - K (K treated as 0 if empty)
-        const effective = getEffectiveValue(data);
-        let display;
-        if (effective === null) {
-          display = '—';
-        } else {
-          display = Number.isInteger(effective)
-            ? String(effective)
-            : effective.toFixed(2).replace('.', ',');
-        }
-        td.className = display === '—' ? 'td-empty' : '';
-        td.textContent = display;
-      }
-      tr.appendChild(td);
-    });
-
-    tbody.appendChild(tr);
-  });
-
-  table.appendChild(tbody);
-  tableWrap.appendChild(table);
-  preview.appendChild(tableWrap);
-
-  // Total row
-  const totalDiv = document.createElement('div');
-  totalDiv.className = 'total-row';
-  totalDiv.innerHTML = `
-    <span class="total-label">Spolu pre výplatu:</span>
-    <span class="total-value" id="totalValue">0</span>
-    <span class="total-label" style="margin-left:4px">hod.</span>`;
-  preview.appendChild(totalDiv);
-
-  // Footer
-  const footer = document.createElement('div');
-  footer.className = 'doc-footer';
-  footer.innerHTML = `
-    <div class="confirmation-text">
-      Svojím podpisom potvrdzujem, že menovaný týždenne odpracoval 37,5 hod.
-    </div>
-    <div class="signature-row">
-      <div class="signature-item">Vykazuje:<span class="signature-line"></span></div>
-      <div class="signature-item" style="margin-top:36px">Schválil:<span class="signature-line"></span></div>
-    </div>`;
-  preview.appendChild(footer);
-}
-</script>
