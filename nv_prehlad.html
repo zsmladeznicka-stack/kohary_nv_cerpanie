@@ -555,12 +555,9 @@ async function fetchAll() {
 
 // ── RENDER ────────────────────────────────────────────
 function renderDebug(lines) {
-  const content = document.getElementById('content');
-  content.innerHTML = '<div style="padding:20px;font-size:11px;font-family:monospace;background:#1a1814;color:#f5f2eb;border-radius:8px;white-space:pre-wrap;line-height:1.8">' +
-    '<strong style="color:#e8631f">DEBUG LOG</strong>
-
-' + lines.map(function(l){return escHtml(l);}).join('
-') + '</div>';
+  var el = document.getElementById('content');
+  var header = '<strong style="color:#e8631f">DEBUG LOG</strong><br><br>';
+  el.innerHTML = '<div style="padding:20px;font-size:11px;font-family:monospace;background:#1a1814;color:#f5f2eb;border-radius:8px;line-height:1.8">' + header + lines.map(function(l){return escHtml(l);}).join('<br>') + '</div>';
 }
 
 function renderEmpty() {
