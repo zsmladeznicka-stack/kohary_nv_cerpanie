@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NV Prehľad</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #f5f2eb;
+    --paper:    #fdfaf4;
+    --ink:      #1a1814;
+    --muted:    #8a8070;
+    --border:   #ddd8cc;
+    --accent:   #c5401a;
+    --accent2:  #e8631f;
+    --green:    #2d7a4f;
+    --surface:  #eee9df;
+    --white:    #ffffff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--ink);
+    color: var(--bg);
+    padding: 32px 48px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .header-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .header-title span { color: var(--accent2); }
+
+  .header-sub {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  /* ── USER PILL ── */
+  .user-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px; padding: 7px 12px;
+  }
+  .user-avatar {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--accent); display: flex;
+    align-items: center; justify-content: center;
+    font-size: 10px; color: white; flex-shrink: 0; overflow: hidden;
+  }
+  .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .user-name { font-size: 11px; color: rgba(245,242,235,0.85); }
+  .sign-out-btn {
+    background: none; border: none; color: var(--muted);
+    font-size: 10px; cursor: pointer; font-family: 'DM Mono', monospace;
+    transition: color 0.15s; padding: 0 0 0 4px;
+  }
+  .sign-out-btn:hover { color: var(--accent2); }
+
+  /* ── SIGN IN BUTTON ── */
+  .signin-btn {
+    background: white; color: #3c3c3c;
+    border: none; border-radius: 6px;
+    font-family: 'DM Mono', monospace; font-size: 12px;
+    padding: 10px 16px; cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    transition: opacity 0.15s;
+  }
+  .signin-btn::before {
+    content: '';
+    width: 16px; height: 16px; flex-shrink: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%23EA4335' d='M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z'/%3E%3Cpath fill='%234285F4' d='M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z'/%3E%3Cpath fill='%23FBBC05' d='M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-size: contain;
+  }
+  .signin-btn:hover { opacity: 0.9; }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    padding: 20px 48px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .fetch-btn {
+    background: var(--accent);
+    color: white; border: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px; letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 11px 24px; border-radius: 4px;
+    cursor: pointer; transition: background 0.15s, transform 0.1s;
+  }
+  .fetch-btn:hover:not(:disabled) { background: var(--accent2); transform: translateY(-1px); }
+  .fetch-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .status-chip {
+    font-size: 10px; padding: 6px 12px; border-radius: 4px;
+    letter-spacing: 0.06em;
+  }
+  .s-loading { background: var(--border); color: var(--muted); }
+  .s-ok      { background: rgba(45,122,79,0.12); color: var(--green); border: 1px solid rgba(45,122,79,0.25); }
+  .s-error   { background: rgba(197,64,26,0.1); color: var(--accent); border: 1px solid rgba(197,64,26,0.2); }
+
+  .total-chip {
+    margin-left: auto;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px; font-weight: 700;
+    color: var(--ink);
+  }
+
+  .total-chip span {
+    color: var(--accent);
+    font-size: 18px;
+  }
+
+  /* ── MAIN ── */
+  .main { padding: 36px 48px; }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center;
+    padding: 80px 40px;
+    color: var(--muted);
+  }
+  .empty-glyph {
+    font-family: 'Syne', sans-serif;
+    font-size: 64px; font-weight: 800;
+    opacity: 0.08; letter-spacing: -4px;
+    margin-bottom: 16px;
+  }
+  .empty-state p { font-size: 12px; line-height: 1.8; }
+
+  /* ── TABLE ── */
+  .results-wrap {
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .results-table thead tr {
+    background: var(--surface);
+    border-bottom: 2px solid var(--border);
+  }
+
+  .results-table th {
+    padding: 10px 20px;
+    text-align: left;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .results-table th.th-right { text-align: right; }
+
+  .results-table td {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  .results-table tbody tr:last-child td { border-bottom: none; }
+  .results-table tbody tr { transition: background 0.1s; }
+  .results-table tbody tr:hover { background: var(--surface); }
+
+  .td-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .td-folder {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .td-value {
+    text-align: right;
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  .td-unit {
+    font-size: 10px;
+    color: var(--muted);
+    margin-left: 2px;
+  }
+
+  .td-bar-cell { width: 160px; }
+  .td-bar-wrap {
+    background: var(--border);
+    border-radius: 2px;
+    height: 6px;
+    overflow: hidden;
+  }
+  .td-bar {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.6s ease;
+  }
+
+  .row-num {
+    color: var(--muted);
+    font-size: 10px;
+    width: 32px;
+    text-align: center;
+  }
+
+  /* ── PROGRESS ── */
+  .progress-wrap {
+    padding: 20px 48px;
+    display: none;
+  }
+  .progress-bar-outer {
+    background: var(--border);
+    border-radius: 3px;
+    height: 4px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .progress-bar-inner {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+  .progress-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    padding: 16px 48px;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+
+  @media print {
+    .header-right, .toolbar, .progress-wrap, .footer { display: none !important; }
+    body { background: white; }
+    .main { padding: 20px; }
+    .results-wrap { border: 1pt solid #ccc; }
+    .results-table th { background: #f0f0f0; }
+    .td-bar-cell { display: none; }
+    th.th-bar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">NV <span>Prehľad</span></div>
+    <div class="header-sub">NV_2025_2026_ÚJ · Zostatok na výplatu</div>
+  </div>
+  <div class="header-right">
+    <div id="authArea">
+      <button class="signin-btn" id="signinBtn" onclick="startSignIn()">Prihlásiť sa cez Google</button>
+    </div>
+    <div id="userArea" style="display:none">
+      <div class="user-pill">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <div class="user-name" id="userName">—</div>
+        <button class="sign-out-btn" onclick="signOut()">odhlásiť</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toolbar">
+  <button class="fetch-btn" id="fetchBtn" onclick="fetchAll()" disabled>Načítať všetky →</button>
+  <div id="statusChip" style="display:none"></div>
+  <div class="total-chip" id="totalChip" style="display:none"></div>
+</div>
+
+<div class="progress-wrap" id="progressWrap">
+  <div class="progress-bar-outer">
+    <div class="progress-bar-inner" id="progressBar"></div>
+  </div>
+  <div class="progress-label" id="progressLabel">Inicializujem...</div>
+</div>
+
+<div class="main">
+  <div id="content">
+    <div class="empty-state">
+      <div class="empty-glyph">NV</div>
+      <p>Prihláste sa a kliknite <strong>Načítať všetky</strong>.<br>
+      App prehľadá všetky priečinky a nájde zostatok NV.</p>
+    </div>
+  </div>
+</div>
+
+<div class="footer">NV Prehľad · NV_2025_2026_ÚJ · Automaticky generovaný prehľad</div>
+
+<script>
+const ROOT_FOLDER_ID = '0B784zT_u70KHYTlkQ214d2ZWVm8';
+const TARGET_SHEET   = 'NV_2025_2026_ÚJ';
+const CLIENT_ID      = '249918391952-ppn7a4c88qa0fl47g21k2ldd3957a0c0.apps.googleusercontent.com';
+
+const OAUTH_SCOPES = [
+  'https://www.googleapis.com/auth/drive.readonly',
+  'https://www.googleapis.com/auth/spreadsheets.readonly',
+  'https://www.googleapis.com/auth/userinfo.profile',
+  'https://www.googleapis.com/auth/userinfo.email'
+].join(' ');
+
+let accessToken = null;
+
+// ── AUTH ──────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  if (window.location.hash && window.location.hash.includes('access_token')) {
+    handleOAuthCallback();
+  }
+});
+
+function startSignIn() {
+  const redirectUri = window.location.origin + window.location.pathname;
+  const params = new URLSearchParams({
+    client_id:     CLIENT_ID,
+    redirect_uri:  redirectUri,
+    response_type: 'token',
+    scope:         OAUTH_SCOPES,
+    prompt:        'select_account'
+  });
+  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+}
+
+async function handleOAuthCallback() {
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  const token = params.get('access_token');
+  const error = params.get('error');
+  history.replaceState(null, '', window.location.pathname);
+  if (error || !token) { showStatus('Chyba prihlásenia: ' + (error || 'žiadny token'), 'error'); return; }
+  accessToken = token;
+  try {
+    const r = await gFetch('https://www.googleapis.com/oauth2/v3/userinfo');
+    const p = await r.json();
+    showUser(p);
+  } catch(e) {
+    showUser({ name: 'Používateľ', email: '' });
+  }
+  document.getElementById('fetchBtn').disabled = false;
+  showStatus('Prihlásený — kliknite Načítať všetky.', 'ok');
+}
+
+function showUser(profile) {
+  document.getElementById('authArea').style.display = 'none';
+  document.getElementById('userArea').style.display = 'block';
+  document.getElementById('userName').textContent = profile.name || 'Používateľ';
+  const av = document.getElementById('userAvatar');
+  if (profile.picture) av.innerHTML = '<img src="' + profile.picture + '" alt="">';
+  else av.textContent = (profile.name || 'U')[0].toUpperCase();
+}
+
+function signOut() {
+  if (accessToken) fetch('https://oauth2.googleapis.com/revoke?token=' + accessToken, { method: 'POST' });
+  accessToken = null;
+  document.getElementById('authArea').style.display = 'block';
+  document.getElementById('userArea').style.display = 'none';
+  document.getElementById('fetchBtn').disabled = true;
+  document.getElementById('totalChip').style.display = 'none';
+  document.getElementById('content').innerHTML = '<div class="empty-state"><div class="empty-glyph">NV</div><p>Prihláste sa a kliknite Načítať všetky.</p></div>';
+  hideStatus();
+}
+
+async function gFetch(url) {
+  return fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('statusChip');
+  el.style.display = 'inline-block';
+  el.className = 'status-chip s-' + type;
+  el.textContent = msg;
+}
+function hideStatus() { document.getElementById('statusChip').style.display = 'none'; }
+
+function setProgress(pct, label) {
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = label;
+}
+function hideProgress() { document.getElementById('progressWrap').style.display = 'none'; }
+
+// ── MAIN FETCH ────────────────────────────────────────
+async function fetchAll() {
+  if (!accessToken) { showStatus('Najprv sa prihláste.', 'error'); return; }
+
+  const btn = document.getElementById('fetchBtn');
+  btn.disabled = true;
+  btn.textContent = 'Načítavam...';
+  document.getElementById('totalChip').style.display = 'none';
+  showStatus('Načítavam priečinky...', 'loading');
+  setProgress(5, 'Načítavam zoznam priečinkov...');
+
+  const results = [];
+
+  try {
+    // 1. Get all subfolders of root
+    const q = encodeURIComponent("'" + ROOT_FOLDER_ID + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false");
+    const foldersResp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&orderBy=name&fields=files(id,name)&pageSize=200');
+    const foldersData = await foldersResp.json();
+    if (foldersData.error) throw new Error(foldersData.error.message);
+
+    const folders = foldersData.files || [];
+    if (!folders.length) throw new Error('Žiadne priečinky nenájdené.');
+
+    setProgress(10, 'Nájdených ' + folders.length + ' priečinkov. Hľadám tabuľky...');
+
+    // 2. For each folder, find sheet named TARGET_SHEET
+    for (let fi = 0; fi < folders.length; fi++) {
+      const folder = folders[fi];
+      const pct = 10 + Math.round((fi / folders.length) * 75);
+      setProgress(pct, 'Prehľadávam: ' + folder.name + ' (' + (fi+1) + '/' + folders.length + ')');
+
+      const sq = encodeURIComponent("'" + folder.id + "' in parents and mimeType='application/vnd.google-apps.spreadsheet' and name='" + TARGET_SHEET.replace(/'/g, "\\'") + "' and trashed=false");
+      const sheetsResp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + sq + '&fields=files(id,name)&pageSize=5');
+      const sheetsData = await sheetsResp.json();
+      if (sheetsData.error) continue;
+
+      const sheets = sheetsData.files || [];
+      if (!sheets.length) continue;
+
+      // Found the sheet — read L1 and name from A1:H2
+      const sheetId = sheets[0].id;
+
+      try {
+        // Fetch L1
+        const l1Resp = await gFetch('https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent("'" + TARGET_SHEET + "'!L1"));
+        const l1Data = await l1Resp.json();
+        const l1Raw = (l1Data.values && l1Data.values[0] && l1Data.values[0][0]) ? String(l1Data.values[0][0]).trim() : '';
+        const l1Val = parseFloat(l1Raw.replace(',', '.'));
+        if (isNaN(l1Val) || l1Val <= 0) continue; // skip zero or empty
+
+        // Fetch name from A1:H2
+        const nameResp = await gFetch('https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent("'" + TARGET_SHEET + "'!A1:H2"));
+        const nameData = await nameResp.json();
+        let employeeName = folder.name; // fallback to folder name
+        if (nameData.values) {
+          const skipWords = ['datum','cinnost','cas','narok','meno','name','zamestnanec','employee','od','do','nv','schvalene','vyplatu'];
+          outer: for (const row of nameData.values) {
+            for (const cell of row) {
+              const c = String(cell || '').trim();
+              if (!c) continue;
+              if (skipWords.some(function(w) { return c.toLowerCase().includes(w); })) continue;
+              employeeName = c;
+              break outer;
+            }
+          }
+        }
+
+        results.push({
+          name:       employeeName,
+          folderName: folder.name,
+          value:      l1Val,
+          valueStr:   Number.isInteger(l1Val) ? String(l1Val) : l1Val.toFixed(2).replace('.', ',')
+        });
+
+      } catch(sheetErr) {
+        console.warn('Chyba pri čítaní tabuľky v ' + folder.name + ':', sheetErr);
+      }
+    }
+
+    setProgress(100, 'Hotovo.');
+
+    if (!results.length) {
+      showStatus('Žiadne záznamy s hodnotou > 0 neboli nájdené.', 'error');
+      renderEmpty();
+    } else {
+      // Sort by value descending
+      results.sort(function(a, b) { return b.value - a.value; });
+      const total = results.reduce(function(s, r) { return s + r.value; }, 0);
+      const totalStr = Number.isInteger(total) ? String(total) : total.toFixed(2).replace('.', ',');
+      showStatus('Nájdených ' + results.length + ' zamestnancov.', 'ok');
+      document.getElementById('totalChip').style.display = 'block';
+      document.getElementById('totalChip').innerHTML = 'Celkom: <span>' + totalStr + ' hod.</span>';
+      renderResults(results);
+    }
+
+  } catch(e) {
+    showStatus('Chyba: ' + e.message, 'error');
+    hideProgress();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Načítať všetky →';
+    setTimeout(hideProgress, 1500);
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────
+function renderEmpty() {
+  document.getElementById('content').innerHTML = '<div class="empty-state"><div class="empty-glyph">0</div><p>Žiadne záznamy s hodnotou väčšou ako 0.</p></div>';
+}
+
+function renderResults(results) {
+  const maxVal = results[0].value;
+  const content = document.getElementById('content');
+
+  const wrap = document.createElement('div');
+  wrap.className = 'results-wrap';
+
+  const table = document.createElement('table');
+  table.className = 'results-table';
+  table.innerHTML = '<thead><tr>' +
+    '<th>#</th>' +
+    '<th>Zamestnanec</th>' +
+    '<th class="th-right">Zostatok (hod.)</th>' +
+    '<th class="th-bar">Podiel</th>' +
+    '</tr></thead>';
+
+  const tbody = document.createElement('tbody');
+
+  results.forEach(function(r, idx) {
+    const tr = document.createElement('tr');
+    const barPct = Math.round((r.value / maxVal) * 100);
+
+    tr.innerHTML =
+      '<td class="row-num">' + (idx + 1) + '</td>' +
+      '<td>' +
+        '<div class="td-name">' + escHtml(r.name) + '</div>' +
+        '<div class="td-folder">' + escHtml(r.folderName) + '</div>' +
+      '</td>' +
+      '<td class="td-value">' + r.valueStr + '<span class="td-unit">hod.</span></td>' +
+      '<td class="td-bar-cell">' +
+        '<div class="td-bar-wrap">' +
+          '<div class="td-bar" style="width:' + barPct + '%"></div>' +
+        '</div>' +
+      '</td>';
+
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  content.innerHTML = '';
+  content.appendChild(wrap);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
