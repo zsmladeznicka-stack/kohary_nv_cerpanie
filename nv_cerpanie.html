@@ -644,6 +644,12 @@ function setMode(mode) {
   document.getElementById('dateGroup').style.display  = mode === 'volno'   ? '' : 'none';
   document.getElementById('printBtnWrap').style.display = mode === 'vyplata' ? '' : 'none';
 
+  // Enable the relevant input immediately if a sheet is already loaded
+  if (selectedSheetId) {
+    document.getElementById('monthInput').disabled = mode !== 'vyplata';
+    document.getElementById('dateInput').disabled  = mode !== 'volno';
+  }
+
   // Clear preview when switching modes
   document.getElementById('preview').innerHTML = '<div class="empty-state"><div class="empty-glyph">&#x25a6;&#x25a6;&#x25a6;</div><p>Režim zmenený. Vyberte tabuľku znova.</p></div>';
   document.getElementById('employeeBlockWrap').innerHTML = '';
