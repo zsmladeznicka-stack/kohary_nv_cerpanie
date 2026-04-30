@@ -208,6 +208,21 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* ── MODE TOGGLE ── */
+  .mode-toggle {
+    display: flex; gap: 6px; width: 100%;
+  }
+  .mode-btn {
+    flex: 1; padding: 10px 8px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    border-radius: 6px; cursor: pointer; transition: all 0.15s;
+    border: 1px solid var(--border2); background: var(--surface2); color: var(--muted);
+  }
+  .mode-btn.active-vyplata { background: var(--accent); border-color: var(--accent); color: white; }
+  .mode-btn.active-volno   { background: #0e7490; border-color: #0e7490; color: white; }
+  .mode-btn:hover:not(.active-vyplata):not(.active-volno) { border-color: var(--text); color: var(--text); }
+
   .fetch-btn {
     background: var(--accent); color: white; border: none; padding: 11px;
     font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em;
@@ -534,15 +549,29 @@
     </div>
 
     <div class="field-group">
+      <label class="field-label">Režim</label>
+      <div class="mode-toggle">
+        <button class="mode-btn active-vyplata" id="modeVyplata" onclick="setMode('vyplata')">Výplata</button>
+        <button class="mode-btn" id="modeVolno" onclick="setMode('volno')">Voľno</button>
+      </div>
+    </div>
+
+    <div class="field-group">
       <label class="field-label">Záložka <span style="color:#444">(voliteľné)</span></label>
       <input class="field-input" id="sheetTab" type="text" placeholder="List1" disabled>
       <span class="field-hint">Nechajte prázdne pre použitie prvého listu.</span>
     </div>
 
-    <div class="field-group">
+    <div class="field-group" id="monthGroup">
       <label class="field-label">Mesiac</label>
       <input class="field-input" id="monthInput" type="text" placeholder="napr. január, február…" disabled>
       <span class="field-hint">Doplní sa do názvu dokumentu.</span>
+    </div>
+
+    <div class="field-group" id="dateGroup" style="display:none">
+      <label class="field-label">Dátum čerpania</label>
+      <input class="field-input" id="dateInput" type="date" disabled>
+      <span class="field-hint">Dátum sa zapíše do stĺpca L.</span>
     </div>
 
     <div class="field-group">
@@ -556,7 +585,9 @@
 
     <hr class="divider">
 
-    <button class="print-btn-side" id="printBtn" onclick="printDoc()" disabled>⎙ Tlačiť / Uložiť ako PDF</button>
+    <div id="printBtnWrap">
+      <button class="print-btn-side" id="printBtn" onclick="printDoc()" disabled>⎙ Tlačiť / Uložiť ako PDF</button>
+    </div>
 
   </aside>
 
@@ -584,8 +615,13 @@
 <script>
 // -- CONFIG ----------------------------------------------
 const ROOT_FOLDER_ID = '0B784zT_u70KHYTlkQ214d2ZWVm8';
-const COLUMNS     = ['Dátum', 'Činnosť', 'Čas od', 'Čas do', 'Schválené na výplatu'];
-const COL_INDICES = [0, 1, 2, 3, 8]; // A,B,C,D,I
+const COLUMNS_VYPLATA = ['Dátum', 'Činnosť', 'Čas od', 'Čas do', 'Schválené na výplatu'];
+const COLUMNS_VOLNO   = ['Dátum', 'Činnosť', 'Čas od', 'Čas do', 'Náhradné voľno'];
+const COL_INDICES_VYPLATA = [0, 1, 2, 3, 8];  // A,B,C,D,I
+const COL_INDICES_VOLNO   = [0, 1, 2, 3, 7];  // A,B,C,D,H
+let COLUMNS     = COLUMNS_VYPLATA;
+let COL_INDICES = COL_INDICES_VYPLATA;
+let currentMode = 'vyplata'; // 'vyplata' or 'volno'
 const CLIENT_ID   = '249918391952-ppn7a4c88qa0fl47g21k2ldd3957a0c0.apps.googleusercontent.com';
 
 // -- STATE ------------------------------------------------
@@ -593,6 +629,30 @@ let accessToken      = null;
 let selectedSheetId  = null;
 let lastIncludedRows = [];
 let lastSheetTitle   = '';
+
+// -- MODE ------------------------------------------------
+function setMode(mode) {
+  currentMode = mode;
+  COLUMNS     = mode === 'vyplata' ? COLUMNS_VYPLATA     : COLUMNS_VOLNO;
+  COL_INDICES = mode === 'vyplata' ? COL_INDICES_VYPLATA : COL_INDICES_VOLNO;
+
+  document.getElementById('modeVyplata').className = 'mode-btn' + (mode === 'vyplata' ? ' active-vyplata' : '');
+  document.getElementById('modeVolno').className   = 'mode-btn' + (mode === 'volno'   ? ' active-volno'   : '');
+
+  // Show/hide mode-specific inputs
+  document.getElementById('monthGroup').style.display = mode === 'vyplata' ? '' : 'none';
+  document.getElementById('dateGroup').style.display  = mode === 'volno'   ? '' : 'none';
+  document.getElementById('printBtnWrap').style.display = mode === 'vyplata' ? '' : 'none';
+
+  // Clear preview when switching modes
+  document.getElementById('preview').innerHTML = '<div class="empty-state"><div class="empty-glyph">&#x25a6;&#x25a6;&#x25a6;</div><p>Režim zmenený. Vyberte tabuľku znova.</p></div>';
+  document.getElementById('employeeBlockWrap').innerHTML = '';
+  document.getElementById('printMeta').textContent = '';
+  lastIncludedRows = [];
+
+  // Refetch if sheet already selected
+  if (selectedSheetId) fetchRows();
+}
 
 const OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',
@@ -683,12 +743,19 @@ function signOut() {
 }
 
 function enableInputs() {
-  ['sheetTab','monthInput'].forEach(id => document.getElementById(id).disabled = false);
+  document.getElementById('sheetTab').disabled = false;
   document.getElementById('employeeDisplay').disabled = false;
+  if (currentMode === 'vyplata') {
+    document.getElementById('monthInput').disabled = false;
+  } else {
+    document.getElementById('dateInput').disabled = false;
+  }
 }
 
 function disableInputs() {
-  ['sheetTab','monthInput','employeeDisplay'].forEach(id => document.getElementById(id).disabled = true);
+  ['sheetTab','monthInput','dateInput','employeeDisplay'].forEach(function(id) {
+    document.getElementById(id).disabled = true;
+  });
 }
 
 function resetSelects() {
@@ -857,13 +924,15 @@ async function gFetch(url) {
 
 // -- EFFECTIVE VALUE (I - K, clamped to 0) ----------------
 function getEffectiveValue(data) {
-  const colI = String(data[8] || '').trim();
-  if (colI === '') return null;
-  const numI = parseFloat(colI.replace(',', '.'));
-  if (isNaN(numI)) return null;
+  // Vyplata: I(8) - K(10)   Volno: H(7) - K(10)
+  const mainColIdx = currentMode === 'vyplata' ? 8 : 7;
+  const colMain = String(data[mainColIdx] || '').trim();
+  if (colMain === '') return null;
+  const numMain = parseFloat(colMain.replace(',', '.'));
+  if (isNaN(numMain)) return null;
   const colK = String(data[10] || '').trim();
   const numK = colK !== '' ? parseFloat(colK.replace(',', '.')) : 0;
-  const result = numI - (isNaN(numK) ? 0 : numK);
+  const result = numMain - (isNaN(numK) ? 0 : numK);
   return result < 0 ? 0 : result;
 }
 
@@ -881,7 +950,8 @@ async function fetchRows() {
 
   hideStatus();
   const tabName = document.getElementById('sheetTab').value.trim();
-  const month   = document.getElementById('monthInput').value.trim();
+  const month   = currentMode === 'vyplata' ? document.getElementById('monthInput').value.trim() : '';
+  const dateVal = currentMode === 'volno'   ? document.getElementById('dateInput').value.trim()  : '';
   const btn = document.getElementById('zapisBtn');
   btn.disabled = true;
   showStatus('Nacitavam data z tabulky...', 'loading');
@@ -939,9 +1009,13 @@ async function fetchRows() {
     document.getElementById('employeeDisplay').value = employeeName || '';
 
     const titleEl = document.getElementById('docDisplayTitle');
-    titleEl.textContent = month
-      ? 'Podklad pre vyplatu premenlivych zloziek mzdy za mesiac ' + month
-      : 'Podklad pre vyplatu premenlivych zloziek mzdy';
+    if (currentMode === 'vyplata') {
+      titleEl.textContent = month
+        ? 'Podklad pre vyplatu premenlivych zloziek mzdy za mesiac ' + month
+        : 'Podklad pre vyplatu premenlivych zloziek mzdy';
+    } else {
+      titleEl.textContent = 'Evidencia cerpania nahradneho volna';
+    }
 
     document.getElementById('printMeta').textContent =
       meta.properties.title + ' > ' + sheetTitle + '  .  ' + new Date().toLocaleString('sk-SK');
@@ -952,8 +1026,10 @@ async function fetchRows() {
     const availableCount = rows.filter(function(r) { return isAvailable(r); }).length;
     showStatus('Nacitanych ' + rows.length + ' riadkov, ' + availableCount + ' dostupnych na vyber.', 'ok');
 
-    document.getElementById('printBtn').disabled = false;
-    document.getElementById('printBtnTop').disabled = false;
+    if (currentMode === 'vyplata') {
+      document.getElementById('printBtn').disabled = false;
+      document.getElementById('printBtnTop').disabled = false;
+    }
 
   } catch(e) {
     let msg = e.message;
@@ -969,13 +1045,24 @@ async function zapisatCerpanie() {
   if (!selectedSheetId)         { showStatus('Najprv nacitajte riadky.', 'error'); return; }
   if (!lastIncludedRows.length) { showStatus('Ziadne riadky na zapis.', 'error'); return; }
 
-  const month = document.getElementById('monthInput').value.trim();
-  if (!month) { showStatus('Zadajte mesiac pred zapisom.', 'error'); return; }
+  let mesiacRok = '';
+  let lColValue = '';
+  if (currentMode === 'vyplata') {
+    const month = document.getElementById('monthInput').value.trim();
+    if (!month) { showStatus('Zadajte mesiac pred zapisom.', 'error'); return; }
+    const year = new Date().getFullYear();
+    mesiacRok = month + ' ' + year;
+    lColValue = null; // will be built per-row in loop
+  } else {
+    const dateVal = document.getElementById('dateInput').value.trim();
+    if (!dateVal) { showStatus('Zadajte dátum čerpania pred zápisom.', 'error'); return; }
+    // Format date as DD.MM.YYYY
+    const d = new Date(dateVal);
+    lColValue = d.getDate() + '.' + (d.getMonth()+1) + '.' + d.getFullYear();
+  }
 
-  const year = new Date().getFullYear();
-  const mesiacRok = month + ' ' + year;
-
-  if (!confirm('Zapisat cerpanie do tabulky?\n\n' + lastIncludedRows.length + ' riadkov, mesiac: ' + mesiacRok + '\nK = kumulativny sucet, L = historia cerpania\n\nTato akcia je nevratna.')) return;
+  const modeLabel = currentMode === 'vyplata' ? 'Výplata' : 'Voľno';
+  if (!confirm('Zapísať ' + modeLabel + ' do tabuľky?\n\n' + lastIncludedRows.length + ' riadkov\n' + (currentMode === 'vyplata' ? 'Mesiac: ' + mesiacRok : 'Dátum: ' + lColValue) + '\n\nTáto akcia je nevratná.')) return;
 
   const btn = document.getElementById('zapisBtn');
   btn.disabled = true;
@@ -1006,13 +1093,22 @@ async function zapisatCerpanie() {
       const oldK = existingK[rowNum] !== undefined ? parseFloat(String(existingK[rowNum]).replace(',', '.')) : 0;
       const newK = (isNaN(oldK) ? 0 : oldK) + selectedVal;
       const newKStr = Number.isInteger(newK) ? String(newK) : newK.toFixed(2).replace('.', ',');
-      const selLabel = Number.isInteger(selectedVal) ? String(selectedVal) : selectedVal.toFixed(1).replace('.', ',');
-      const newEntry = mesiacRok + ' - ' + selLabel + ' hod.';
-      const oldL = existingL[rowNum] || '';
-      const newL = oldL ? oldL + ', ' + newEntry : newEntry;
+
+      let jVal, newL;
+      if (currentMode === 'vyplata') {
+        jVal = 'Platené';
+        const selLabel = Number.isInteger(selectedVal) ? String(selectedVal) : selectedVal.toFixed(1).replace('.', ',');
+        const newEntry = mesiacRok + ' - ' + selLabel + ' hod.';
+        const oldL = existingL[rowNum] || '';
+        newL = oldL ? oldL + ', ' + newEntry : newEntry;
+      } else {
+        jVal = 'NV';
+        newL = lColValue; // just the date, overwrites L
+      }
+
       return {
         range: "'" + lastSheetTitle + "'!J" + rowNum + ":L" + rowNum,
-        values: [[ 'Platené', newKStr, newL ]]
+        values: [[ jVal, newKStr, newL ]]
       };
     });
 
