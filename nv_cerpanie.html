@@ -646,8 +646,8 @@ function setMode(mode) {
 
   // Enable the relevant input immediately if a sheet is already loaded
   if (selectedSheetId) {
-    document.getElementById('monthInput').disabled = mode !== 'vyplata';
-    document.getElementById('dateInput').disabled  = mode !== 'volno';
+    document.getElementById('monthInput').disabled = false;
+    document.getElementById('dateInput').disabled  = false;
   }
 
   // Clear preview when switching modes
@@ -749,13 +749,9 @@ function signOut() {
 }
 
 function enableInputs() {
-  document.getElementById('sheetTab').disabled = false;
-  document.getElementById('employeeDisplay').disabled = false;
-  if (currentMode === 'vyplata') {
-    document.getElementById('monthInput').disabled = false;
-  } else {
-    document.getElementById('dateInput').disabled = false;
-  }
+  ['sheetTab','monthInput','dateInput','employeeDisplay'].forEach(function(id) {
+    document.getElementById(id).disabled = false;
+  });
 }
 
 function disableInputs() {
