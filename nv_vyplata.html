@@ -709,11 +709,13 @@ async function loadFolders() {
 
   try {
     const q = encodeURIComponent("'" + ROOT_FOLDER_ID + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false");
-    const resp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&orderBy=name&fields=files(id,name,folderColorRgb)&pageSize=200');
+    const resp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,folderColorRgb)&pageSize=200');
     const data = await resp.json();
     if (data.error) throw new Error(data.error.message);
 
-    const folders = data.files || [];
+    const folders = (data.files || []).sort(function(a, b) {
+      return a.name.localeCompare(b.name, 'sk', { sensitivity: 'base' });
+    });
     if (!folders.length) throw new Error('V priecinku neboli najdene ziadne podpriecinky.');
 
     const dropdown = document.getElementById('folderSelectDropdown');
@@ -1157,16 +1159,24 @@ function renderTable(rows, employeeName) {
       sel.className = 'subtract-select screen-only';
       sel.dataset.rowNum = rowNum;
       sel.disabled = true;
-      const steps = Math.round(effectiveVal / 0.5);
-      for (let i = 1; i <= steps; i++) {
-        const v = i * 0.5;
+      // Build steps of 0.5 up to effectiveVal, always include effectiveVal as last option
+      const fullSteps = Math.floor(effectiveVal / 0.5);
+      for (let i = 1; i <= fullSteps; i++) {
+        const v = Math.round(i * 0.5 * 100) / 100; // avoid floating point drift
+        if (v >= effectiveVal) break; // stop before exceeding
         const opt = document.createElement('option');
         const label = Number.isInteger(v) ? String(v) : v.toFixed(1).replace('.', ',');
         opt.value = String(v);
         opt.textContent = label + ' hod.';
-        if (v === effectiveVal) opt.selected = true;
         sel.appendChild(opt);
       }
+      // Always add the exact effectiveVal as the last (default) option
+      const lastOpt = document.createElement('option');
+      const lastLabel = Number.isInteger(effectiveVal) ? String(effectiveVal) : effectiveVal.toFixed(2).replace('.', ',');
+      lastOpt.value = String(effectiveVal);
+      lastOpt.textContent = lastLabel + ' hod.';
+      lastOpt.selected = true;
+      sel.appendChild(lastOpt);
 
       sel.onchange = function() {
         cb.dataset.colI = this.value;
