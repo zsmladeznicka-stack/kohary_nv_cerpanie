@@ -521,7 +521,7 @@
           <div class="user-name" id="userName">—</div>
           <div class="user-email" id="userEmail">—</div>
         </div>
-        <button class="sign-out-btn" onclick="signOut()">odhlásiť</button>
+        <button class="sign-out-btn" onclick="signOut()">Odhlásiť</button>
       </div>
     </div>
 
@@ -564,7 +564,21 @@
 
     <div class="field-group" id="monthGroup">
       <label class="field-label">Mesiac</label>
-      <input class="field-input" id="monthInput" type="text" placeholder="napr. január, február…" disabled>
+      <select class="field-select" id="monthInput" disabled>
+        <option value="">— Vyberte mesiac —</option>
+        <option value="január">január</option>
+        <option value="február">február</option>
+        <option value="marec">marec</option>
+        <option value="apríl">apríl</option>
+        <option value="máj">máj</option>
+        <option value="jún">jún</option>
+        <option value="júl">júl</option>
+        <option value="august">august</option>
+        <option value="september">september</option>
+        <option value="október">október</option>
+        <option value="november">november</option>
+        <option value="december">december</option>
+      </select>
       <span class="field-hint">Doplní sa do názvu dokumentu.</span>
     </div>
 
@@ -605,7 +619,7 @@
     <div id="preview">
       <div class="empty-state">
         <div class="empty-glyph">▦▦▦</div>
-        <p>Prihláste sa cez Google, vyberte zamestnanca<br>a tabuľku, potom zadajte čísla riadkov.</p>
+        <p>Prihláste sa cez Google, vyberte zamestnanca<br>a tabuľku — dáta sa načítajú automaticky.</p>
       </div>
     </div>
   </main>
@@ -709,16 +723,16 @@ async function handleOAuthCallback() {
     const profile = await r.json();
     showUser(profile);
   } catch(e) {
-    showUser({ name: 'Pouzivatel', email: '' });
+    showUser({ name: 'Používateľ', email: '' });
   }
-  showStatus('Prihlaseny - nacitavam priecinky...', 'loading');
+  showStatus('Prihlásený — načítavam priečinky…', 'loading');
   loadFolders();
 }
 
 function showUser(profile) {
   document.getElementById('authArea').style.display = 'none';
   document.getElementById('userArea').style.display = 'block';
-  document.getElementById('userName').textContent = profile.name || 'Pouzivatel';
+  document.getElementById('userName').textContent = profile.name || 'Používateľ';
   document.getElementById('userEmail').textContent = profile.email || '';
   const av = document.getElementById('userAvatar');
   if (profile.picture) av.innerHTML = '<img src="' + profile.picture + '" alt="">';
@@ -740,11 +754,11 @@ function signOut() {
   document.getElementById('zapisBtn').disabled = true;
   document.getElementById('printBtn').disabled = true;
   document.getElementById('printBtnTop').disabled = true;
-  document.getElementById('preview').innerHTML = '<div class="empty-state"><div class="empty-glyph">&#x25a6;&#x25a6;&#x25a6;</div><p>Odhlaseny. Prihlasite sa znova.</p></div>';
+  document.getElementById('preview').innerHTML = '<div class="empty-state"><div class="empty-glyph">&#x25a6;&#x25a6;&#x25a6;</div><p>Odhlásený. Prihláste sa znova.</p></div>';
   document.getElementById('employeeBlockWrap').innerHTML = '';
   document.getElementById('printMeta').textContent = '';
   document.getElementById('employeeDisplay').value = '';
-  document.getElementById('docDisplayTitle').textContent = 'Podklad pre vyplatu premenlivych zloziek mzdy';
+  document.getElementById('docDisplayTitle').textContent = 'Podklad pre výplatu premenlivých zložiek mzdy';
   hideStatus();
 }
 
@@ -762,7 +776,7 @@ function disableInputs() {
 
 function resetSelects() {
   document.getElementById('folderSelect').value = '';
-  document.getElementById('folderSelectTrigger').textContent = '— Najprv sa prihlasite —';
+  document.getElementById('folderSelectTrigger').textContent = '— Najprv sa prihláste —';
   document.getElementById('folderSelectTrigger').className = 'custom-select-trigger disabled';
   document.getElementById('folderSelectDropdown').innerHTML = '';
   document.getElementById('folderSelectDropdown').classList.remove('open');
@@ -773,7 +787,7 @@ function resetSelects() {
 
 // -- DRIVE FOLDER LOADING ---------------------------------
 async function loadFolders() {
-  document.getElementById('folderSelectTrigger').textContent = 'Nacitavam...';
+  document.getElementById('folderSelectTrigger').textContent = 'Načítavam…';
   document.getElementById('folderSelectTrigger').className = 'custom-select-trigger disabled';
 
   try {
@@ -785,7 +799,7 @@ async function loadFolders() {
     const folders = (data.files || []).sort(function(a, b) {
       return a.name.localeCompare(b.name, 'sk', { sensitivity: 'base' });
     });
-    if (!folders.length) throw new Error('V priecinku neboli najdene ziadne podpriecinky.');
+    if (!folders.length) throw new Error('V priečinku neboli nájdené žiadne podpriečinky.');
 
     const dropdown = document.getElementById('folderSelectDropdown');
     const trigger  = document.getElementById('folderSelectTrigger');
@@ -832,11 +846,11 @@ async function loadFolders() {
       dropdown.classList.remove('open');
     });
 
-    showStatus('Nacitanych ' + folders.length + ' zamestnancov.', 'ok');
+    showStatus('Načítaných ' + folders.length + ' zamestnancov.', 'ok');
 
   } catch(e) {
-    document.getElementById('folderSelectTrigger').textContent = 'Chyba nacitania';
-    showStatus('Chyba nacitania priecinkov: ' + e.message, 'error');
+    document.getElementById('folderSelectTrigger').textContent = 'Chyba načítania';
+    showStatus('Chyba načítania priečinkov: ' + e.message, 'error');
   }
 }
 
@@ -852,12 +866,12 @@ async function onFolderChange() {
     return;
   }
 
-  sheetSel.innerHTML = '<option value="">Nacitavam tabulky...</option>';
+  sheetSel.innerHTML = '<option value="">Načítavam tabuľky…</option>';
   sheetSel.disabled = true;
-  showStatus('Nacitavam tabulky...', 'loading');
+  showStatus('Načítavam tabuľky…', 'loading');
 
   try {
-    if (!accessToken) throw new Error('Nie ste prihlaseny — token chyba.');
+    if (!accessToken) throw new Error('Nie ste prihlásený — token chýba.');
     const q = encodeURIComponent("'" + folderId + "' in parents and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
     const resp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&orderBy=name&fields=files(id,name)&pageSize=200');
     const data = await resp.json();
@@ -865,8 +879,8 @@ async function onFolderChange() {
 
     const sheets = data.files || [];
     if (!sheets.length) {
-      sheetSel.innerHTML = '<option value="">Ziadne tabulky v priecinku</option>';
-      showStatus('V priecinku neboli najdene ziadne tabulky.', 'error');
+      sheetSel.innerHTML = '<option value="">Žiadne tabuľky v priečinku</option>';
+      showStatus('V priečinku neboli nájdené žiadne tabuľky.', 'error');
       return;
     }
 
@@ -879,10 +893,10 @@ async function onFolderChange() {
     });
     sheetSel.disabled = false;
     sheetSel.addEventListener('change', onSheetChange);
-    showStatus('Nacitanych ' + sheets.length + ' tabuliek.', 'ok');
+    showStatus('Načítaných ' + sheets.length + ' tabuliek.', 'ok');
 
   } catch(e) {
-    sheetSel.innerHTML = '<option value="">Chyba nacitania</option>';
+    sheetSel.innerHTML = '<option value="">Chyba načítania</option>';
     showStatus('Chyba: ' + e.message, 'error');
   }
 }
@@ -947,8 +961,8 @@ function isAvailable(row) {
 
 // -- FETCH ROWS -------------------------------------------
 async function fetchRows() {
-  if (!accessToken)     { showStatus('Najprv sa prihlasite.', 'error'); return; }
-  if (!selectedSheetId) { showStatus('Vyberte tabulku.', 'error'); return; }
+  if (!accessToken)     { showStatus('Najprv sa prihláste.', 'error'); return; }
+  if (!selectedSheetId) { showStatus('Vyberte tabuľku.', 'error'); return; }
 
   hideStatus();
   const tabName = document.getElementById('sheetTab').value.trim();
@@ -956,7 +970,7 @@ async function fetchRows() {
   const dateVal = currentMode === 'volno'   ? document.getElementById('dateInput').value.trim()  : '';
   const btn = document.getElementById('zapisBtn');
   btn.disabled = true;
-  showStatus('Nacitavam data z tabulky...', 'loading');
+  showStatus('Načítavam dáta z tabuľky…', 'loading');
 
   try {
     const metaResp = await gFetch('https://sheets.googleapis.com/v4/spreadsheets/' + selectedSheetId);
@@ -966,7 +980,7 @@ async function fetchRows() {
     let sheet;
     if (tabName) {
       sheet = meta.sheets.find(function(s) { return s.properties.title.toLowerCase() === tabName.toLowerCase(); });
-      if (!sheet) throw new Error('Zalozka "' + tabName + '" nenajdena. Dostupne: ' + meta.sheets.map(function(s){return s.properties.title;}).join(', '));
+      if (!sheet) throw new Error('Záložka "' + tabName + '" nenájdená. Dostupné: ' + meta.sheets.map(function(s){return s.properties.title;}).join(', '));
     } else {
       sheet = meta.sheets[0];
     }
@@ -994,7 +1008,7 @@ async function fetchRows() {
     if (data.error) throw new Error(data.error.message);
 
     const rawRows = data.values || [];
-    if (!rawRows.length) throw new Error('V tabulke neboli najdene ziadne data od riadku 5.');
+    if (!rawRows.length) throw new Error('V tabuľke neboli nájdené žiadne dáta od riadku 5.');
 
     const allRows = rawRows.map(function(rowData, idx) {
       return { rowNum: idx + 5, data: rowData };
@@ -1013,10 +1027,10 @@ async function fetchRows() {
     const titleEl = document.getElementById('docDisplayTitle');
     if (currentMode === 'vyplata') {
       titleEl.textContent = month
-        ? 'Podklad pre vyplatu premenlivych zloziek mzdy za mesiac ' + month
-        : 'Podklad pre vyplatu premenlivych zloziek mzdy';
+        ? 'Podklad pre výplatu premenlivých zložiek mzdy za mesiac ' + month
+        : 'Podklad pre výplatu premenlivých zložiek mzdy';
     } else {
-      titleEl.textContent = 'Evidencia cerpania nahradneho volna';
+      titleEl.textContent = 'Evidencia čerpania náhradného voľna';
     }
 
     document.getElementById('printMeta').textContent =
@@ -1026,7 +1040,7 @@ async function fetchRows() {
     renderTable(rows, employeeName);
 
     const availableCount = rows.filter(function(r) { return isAvailable(r); }).length;
-    showStatus('Nacitanych ' + rows.length + ' riadkov, ' + availableCount + ' dostupnych na vyber.', 'ok');
+    showStatus('Načítaných ' + rows.length + ' riadkov, ' + availableCount + ' dostupnych na vyber.', 'ok');
 
     if (currentMode === 'vyplata') {
       document.getElementById('printBtn').disabled = false;
@@ -1035,23 +1049,23 @@ async function fetchRows() {
 
   } catch(e) {
     let msg = e.message;
-    if (msg.includes('403')) msg = 'Pristup zamietnuty.';
-    if (msg.includes('401')) msg = 'Relacia vyprsala. Odhlaste sa a prihlasite znova.';
+    if (msg.includes('403')) msg = 'Prístup zamietnutý.';
+    if (msg.includes('401')) msg = 'Relácia vypršala. Odhláste sa a prihláste znova.';
     showStatus('Chyba: ' + msg, 'error');
   }
 }
 
 // -- ZAPÍSAŤ ČERPANIE -------------------------------------
 async function zapisatCerpanie() {
-  if (!accessToken)             { showStatus('Najprv sa prihlasite.', 'error'); return; }
-  if (!selectedSheetId)         { showStatus('Najprv nacitajte riadky.', 'error'); return; }
-  if (!lastIncludedRows.length) { showStatus('Ziadne riadky na zapis.', 'error'); return; }
+  if (!accessToken)             { showStatus('Najprv sa prihláste.', 'error'); return; }
+  if (!selectedSheetId)         { showStatus('Najprv načítajte riadky.', 'error'); return; }
+  if (!lastIncludedRows.length) { showStatus('Žiadne riadky na zápis.', 'error'); return; }
 
   let mesiacRok = '';
   let lColValue = '';
   if (currentMode === 'vyplata') {
     const month = document.getElementById('monthInput').value.trim();
-    if (!month) { showStatus('Zadajte mesiac pred zapisom.', 'error'); return; }
+    if (!month) { showStatus('Zadajte mesiac pred zápisom.', 'error'); return; }
     const year = new Date().getFullYear();
     mesiacRok = month + ' ' + year;
     lColValue = null; // will be built per-row in loop
@@ -1068,8 +1082,8 @@ async function zapisatCerpanie() {
 
   const btn = document.getElementById('zapisBtn');
   btn.disabled = true;
-  btn.textContent = 'Zapisujem...';
-  showStatus('Zapisujem do tabulky...', 'loading');
+  btn.textContent = 'Zapisujem…';
+  showStatus('Zapisujem do tabuľky…', 'loading');
 
   try {
     const rowNums = lastIncludedRows.map(function(r) { return r.rowNum; });
@@ -1126,23 +1140,23 @@ async function zapisatCerpanie() {
     const result = await resp.json();
     if (result.error) throw new Error(result.error.message);
 
-    showStatus('Cerpanie zapisane do ' + lastIncludedRows.length + ' riadkov (stlpce J-L). Obnovovanie dat...', 'ok');
-    btn.textContent = 'Obnovovanie...';
+    showStatus('Čerpanie zapísané do ' + lastIncludedRows.length + ' riadkov (stĺpce J–L). Obnovovanie dát…', 'ok');
+    btn.textContent = 'Obnovovanie…';
 
     try {
       await fetchRows();
-      showStatus('Zapisane a data obnovene.', 'ok');
+      showStatus('Zapísané a dáta obnovené.', 'ok');
     } catch(refetchErr) {
-      showStatus('Zapisane. Obnovenie zlyhalo: ' + refetchErr.message, 'ok');
+      showStatus('Zapísané. Obnovenie zlyhalo: ' + refetchErr.message, 'ok');
     }
 
   } catch(e) {
     let msg = e.message;
-    if (msg.includes('403')) msg = 'Pristup zamietnuty. Skontrolujte opravnenia na zapis do tabulky.';
-    if (msg.includes('401')) msg = 'Relacia vyprsala. Odhlaste sa a prihlasite znova.';
-    showStatus('Chyba zapisu: ' + msg, 'error');
+    if (msg.includes('403')) msg = 'Prístup zamietnutý. Skontrolujte oprávnenia na zápis do tabuľky.';
+    if (msg.includes('401')) msg = 'Relácia vypršala. Odhláste sa a prihláste znova.';
+    showStatus('Chyba zápisu: ' + msg, 'error');
     btn.disabled = false;
-    btn.textContent = 'Zapisat cerpanie ->';
+    btn.textContent = 'Zapísať čerpanie →';
   }
 }
 
@@ -1203,7 +1217,7 @@ function updateTotal() {
   });
 
   document.getElementById('zapisBtn').disabled = lastIncludedRows.length === 0;
-  document.getElementById('zapisBtn').textContent = 'Zapisat cerpanie ->';
+  document.getElementById('zapisBtn').textContent = 'Zapísať čerpanie →';
 }
 
 function toggleSelectAll(cb) {
@@ -1329,13 +1343,13 @@ function renderTable(rows, employeeName) {
   // Total row
   const totalDiv = document.createElement('div');
   totalDiv.className = 'total-row';
-  totalDiv.innerHTML = '<span class="total-label">Spolu pre vyplatu:</span><span class="total-value" id="totalValue">0</span><span class="total-label" style="margin-left:4px">hod.</span>';
+  totalDiv.innerHTML = '<span class="total-label">Spolu pre výplatu:</span><span class="total-value" id="totalValue">0</span><span class="total-label" style="margin-left:4px">hod.</span>';
   preview.appendChild(totalDiv);
 
   // Footer
   const footer = document.createElement('div');
   footer.className = 'doc-footer';
-  footer.innerHTML = '<div class="confirmation-text">Svojim podpisom potvrdzujem, ze menovany tyzdenne odpracoval 37,5 hod.</div><div class="signature-row"><div class="signature-item">Vykazuje:<span class="signature-line"></span></div><div class="signature-item" style="margin-top:36px">Schvalil:<span class="signature-line"></span></div></div>';
+  footer.innerHTML = '<div class="confirmation-text">Svojím podpisom potvrdzujem, že menovaný týždenne odpracoval 37,5 hod.</div><div class="signature-row"><div class="signature-item">Vykazuje:<span class="signature-line"></span></div><div class="signature-item" style="margin-top:36px">Schválil:<span class="signature-line"></span></div></div>';
   preview.appendChild(footer);
 }
 
