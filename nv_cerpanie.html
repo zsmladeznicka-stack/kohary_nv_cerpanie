@@ -1060,7 +1060,7 @@ async function fetchRows() {
     const today = new Date();
     const dateStr = today.getDate() + '. ' + (today.getMonth()+1) + '. ' + today.getFullYear();
     const printDateEl = document.getElementById('printDate');
-    printDateEl.textContent = dateStr;
+    printDateEl.textContent = 'Žiadosť podaná dňa: ' + dateStr;
     printDateEl.style.display = 'block';
 
     lastIncludedRows = [];
