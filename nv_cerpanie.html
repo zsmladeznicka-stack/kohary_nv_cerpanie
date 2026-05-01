@@ -265,6 +265,15 @@
     font-family: 'Playfair Display', serif; font-size: 20px;
     color: var(--white); line-height: 1.3; max-width: 560px;
   }
+  .print-date {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  @media print {
+    .print-date { display: block !important; color: #666; font-size: 8pt; margin-top: 2pt; }
+  }
+
   .print-btn-top {
     background: none; border: 1px solid var(--border2); color: var(--muted);
     font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.1em;
@@ -610,6 +619,7 @@
       <div>
         <div class="main-title" id="docDisplayTitle">Podklad pre výplatu premenlivých zložiek mzdy</div>
         <div class="main-meta" id="printMeta"></div>
+        <div class="print-date" id="printDate" style="display:none"></div>
       </div>
       <button class="print-btn-top" id="printBtnTop" onclick="printDoc()" disabled>⎙ Tlačiť</button>
     </div>
@@ -645,6 +655,18 @@ let lastIncludedRows = [];
 let lastSheetTitle   = '';
 
 // -- MODE ------------------------------------------------
+function updateDocTitle() {
+  const month = document.getElementById('monthInput').value.trim();
+  const titleEl = document.getElementById('docDisplayTitle');
+  if (currentMode === 'vyplata') {
+    titleEl.textContent = month
+      ? 'Podklad pre výplatu premenlivých zložiek mzdy za mesiac ' + month
+      : 'Podklad pre výplatu premenlivých zložiek mzdy';
+  } else {
+    titleEl.textContent = 'Evidencia čerpania náhradného voľna';
+  }
+}
+
 function setMode(mode) {
   currentMode = mode;
   COLUMNS     = mode === 'vyplata' ? COLUMNS_VYPLATA     : COLUMNS_VOLNO;
@@ -1035,6 +1057,11 @@ async function fetchRows() {
 
     document.getElementById('printMeta').textContent =
       meta.properties.title + ' > ' + sheetTitle + '  .  ' + new Date().toLocaleString('sk-SK');
+    const today = new Date();
+    const dateStr = today.getDate() + '. ' + (today.getMonth()+1) + '. ' + today.getFullYear();
+    const printDateEl = document.getElementById('printDate');
+    printDateEl.textContent = dateStr;
+    printDateEl.style.display = 'block';
 
     lastIncludedRows = [];
     renderTable(rows, employeeName);
@@ -1343,7 +1370,8 @@ function renderTable(rows, employeeName) {
   // Total row
   const totalDiv = document.createElement('div');
   totalDiv.className = 'total-row';
-  totalDiv.innerHTML = '<span class="total-label">Spolu pre výplatu:</span><span class="total-value" id="totalValue">0</span><span class="total-label" style="margin-left:4px">hod.</span>';
+  const totalLabelText = currentMode === 'volno' ? 'Schválené na náhradné voľno:' : 'Spolu pre výplatu:';
+  totalDiv.innerHTML = '<span class="total-label">' + totalLabelText + '</span><span class="total-value" id="totalValue">0</span><span class="total-label" style="margin-left:4px">hod.</span>';
   preview.appendChild(totalDiv);
 
   // Footer
