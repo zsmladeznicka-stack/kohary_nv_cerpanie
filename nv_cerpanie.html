@@ -817,10 +817,15 @@ async function loadFolders() {
     const rootCheckResp = await gFetch(
       'https://www.googleapis.com/drive/v3/files?q=' +
       encodeURIComponent("'" + ROOT_FOLDER_ID + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false") +
-      '&fields=files(id,name,folderColorRgb)&pageSize=1'
+      '&fields=files(id)&pageSize=1'
     );
     const rootCheck = await rootCheckResp.json();
-    const hasRootAccess = !rootCheck.error && rootCheck.files !== undefined;
+
+    // Admin: no error AND has folders. Teacher: error 403, or empty files array with no access.
+    // Also try fetching the root folder itself to confirm access
+    const rootFolderResp = await gFetch('https://www.googleapis.com/drive/v3/files/' + ROOT_FOLDER_ID + '?fields=id');
+    const rootFolder = await rootFolderResp.json();
+    const hasRootAccess = !rootFolder.error;
 
     if (hasRootAccess) {
       // ADMIN MODE: full folder browser
