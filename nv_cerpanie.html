@@ -856,7 +856,9 @@ async function loadTeacherSheets() {
 
   if (data.error) throw new Error(data.error.message);
 
-  const sheets = data.files || [];
+  const sheets = (data.files || []).filter(function(f) {
+    return f.name.startsWith('NV_20');
+  });
   if (!sheets.length) {
     document.getElementById('folderSelectTrigger').textContent = 'Žiadne tabuľky';
     showStatus('Nenašli sa žiadne tabuľky zdieľané s vaším účtom.', 'error');
