@@ -813,25 +813,15 @@ async function loadFolders() {
   document.getElementById('folderSelectTrigger').className = 'custom-select-trigger disabled';
 
   try {
-    // First: try to access root folder — admin check
-    const rootCheckResp = await gFetch(
-      'https://www.googleapis.com/drive/v3/files?q=' +
-      encodeURIComponent("'" + ROOT_FOLDER_ID + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false") +
-      '&fields=files(id)&pageSize=1'
-    );
-    const rootCheck = await rootCheckResp.json();
+    // Check if user has access to the root folder (admin)
+    const rootResp = await gFetch('https://www.googleapis.com/drive/v3/files/' + ROOT_FOLDER_ID + '?fields=id');
+    const rootData = await rootResp.json();
 
-    // Admin: no error AND has folders. Teacher: error 403, or empty files array with no access.
-    // Also try fetching the root folder itself to confirm access
-    const rootFolderResp = await gFetch('https://www.googleapis.com/drive/v3/files/' + ROOT_FOLDER_ID + '?fields=id');
-    const rootFolder = await rootFolderResp.json();
-    const hasRootAccess = !rootFolder.error;
-
-    if (hasRootAccess) {
-      // ADMIN MODE: full folder browser
+    if (!rootData.error) {
+      // ADMIN: has root access — show full folder browser
       await loadAllFolders();
     } else {
-      // TEACHER MODE: find only sheets accessible to this user inside root
+      // TEACHER: no root access — find their accessible sheets directly
       await loadTeacherSheets();
     }
 
@@ -842,7 +832,6 @@ async function loadFolders() {
 }
 
 async function loadAllFolders() {
-  // Full folder list for admin
   const q = encodeURIComponent("'" + ROOT_FOLDER_ID + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false");
   const resp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,folderColorRgb)&pageSize=200');
   const data = await resp.json();
@@ -858,65 +847,25 @@ async function loadAllFolders() {
 }
 
 async function loadTeacherSheets() {
-  // TEACHER MODE: search for spreadsheets shared with this user anywhere under root
+  // Teacher mode: search all spreadsheets accessible to this user
   showStatus('Hľadám vaše tabuľky…', 'loading');
 
-  const q = encodeURIComponent("'" + ROOT_FOLDER_ID + "' in parents and trashed=false");
-
-  // We cant list root, so search all spreadsheets accessible to this user
-  // that are children of root by searching Drive directly
-  const searchQ = encodeURIComponent("mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
-  const resp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + searchQ + '&fields=files(id,name,parents)&pageSize=200');
+  const q = encodeURIComponent("mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
+  const resp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,parents)&pageSize=200&orderBy=name');
   const data = await resp.json();
+
   if (data.error) throw new Error(data.error.message);
 
-  const allSheets = data.files || [];
-
-  // We need to find sheets whose parent folder is inside ROOT_FOLDER_ID
-  // Get all parent folder IDs and check which ones are children of root
-  const parentIds = [...new Set(allSheets.map(f => f.parents && f.parents[0]).filter(Boolean))];
-
-  if (!parentIds.length) {
-    showStatus('Nenašli sa žiadne tabuľky vo vašom priečinku.', 'error');
+  const sheets = data.files || [];
+  if (!sheets.length) {
     document.getElementById('folderSelectTrigger').textContent = 'Žiadne tabuľky';
+    showStatus('Nenašli sa žiadne tabuľky zdieľané s vaším účtom.', 'error');
     return;
   }
 
-  // Check which parent folders are children of ROOT_FOLDER_ID
-  // by fetching their parent info
-  const folderChecks = await Promise.all(parentIds.map(async function(pid) {
-    const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + pid + '?fields=id,name,parents,folderColorRgb');
-    const d = await r.json();
-    return d;
-  }));
-
-  // Filter folders that are direct children of root
-  const myFolders = folderChecks.filter(function(f) {
-    return f.parents && f.parents.includes(ROOT_FOLDER_ID);
-  });
-
-  if (!myFolders.length) {
-    // Fallback: just show sheets directly without folder grouping
-    // Build a fake "folder" from the user's name and load sheets directly
-    showStatus('Načítavam vaše tabuľky priamo…', 'loading');
-    buildTeacherDirectMode(allSheets);
-    return;
-  }
-
-  // Build folder dropdown with just this teacher's folder(s)
-  buildFolderDropdown(myFolders);
-  showStatus('Nájdený váš priečinok.', 'ok');
-}
-
-function buildTeacherDirectMode(sheets) {
-  // Teacher has sheets but we couldn't identify the folder —
-  // show sheets directly in the sheet dropdown, skip folder step
-  const trigger = document.getElementById('folderSelectTrigger');
-  trigger.textContent = 'Môj priečinok';
-  trigger.className = 'custom-select-trigger disabled';
-
-  // Set a dummy folder value and populate sheets directly
-  document.getElementById('folderSelect').value = 'direct';
+  // Hide folder dropdown entirely — go straight to sheet selection
+  document.getElementById('folderSelectTrigger').textContent = 'Môj priečinok';
+  document.getElementById('folderSelect').value = 'teacher';
 
   const sheetSel = document.getElementById('sheetSelect');
   sheetSel.innerHTML = '<option value="">— Vyberte tabuľku —</option>';
