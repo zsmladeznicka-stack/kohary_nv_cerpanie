@@ -813,68 +813,166 @@ async function loadFolders() {
   document.getElementById('folderSelectTrigger').className = 'custom-select-trigger disabled';
 
   try {
-    const q = encodeURIComponent("'" + ROOT_FOLDER_ID + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false");
-    const resp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,folderColorRgb)&pageSize=200');
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message);
+    // First: try to access root folder — admin check
+    const rootCheckResp = await gFetch(
+      'https://www.googleapis.com/drive/v3/files?q=' +
+      encodeURIComponent("'" + ROOT_FOLDER_ID + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false") +
+      '&fields=files(id,name,folderColorRgb)&pageSize=1'
+    );
+    const rootCheck = await rootCheckResp.json();
+    const hasRootAccess = !rootCheck.error && rootCheck.files !== undefined;
 
-    const folders = (data.files || []).sort(function(a, b) {
-      return a.name.localeCompare(b.name, 'sk', { sensitivity: 'base' });
-    });
-    if (!folders.length) throw new Error('V priečinku neboli nájdené žiadne podpriečinky.');
-
-    const dropdown = document.getElementById('folderSelectDropdown');
-    const trigger  = document.getElementById('folderSelectTrigger');
-    dropdown.innerHTML = '';
-
-    folders.forEach(function(f) {
-      const opt = document.createElement('div');
-      opt.className = 'custom-select-option';
-
-      const dot = document.createElement('span');
-      dot.className = 'folder-color-dot';
-      dot.style.background = f.folderColorRgb || '#6b6b7e';
-      opt.appendChild(dot);
-
-      const lbl = document.createElement('span');
-      lbl.textContent = f.name;
-      opt.appendChild(lbl);
-
-      opt.addEventListener('click', function() {
-        dropdown.querySelectorAll('.custom-select-option').forEach(function(o) { o.classList.remove('selected'); });
-        opt.classList.add('selected');
-        trigger.innerHTML = '';
-        trigger.appendChild(dot.cloneNode(true));
-        trigger.appendChild(document.createTextNode(' ' + f.name));
-        trigger.classList.remove('open');
-        dropdown.classList.remove('open');
-        document.getElementById('folderSelect').value = f.id;
-        onFolderChange();
-      });
-
-      dropdown.appendChild(opt);
-    });
-
-    trigger.className = 'custom-select-trigger';
-    trigger.textContent = '— Vyberte zamestnanca —';
-    trigger.onclick = function(e) {
-      e.stopPropagation();
-      trigger.classList.toggle('open');
-      dropdown.classList.toggle('open');
-    };
-
-    document.addEventListener('click', function() {
-      trigger.classList.remove('open');
-      dropdown.classList.remove('open');
-    });
-
-    showStatus('Načítaných ' + folders.length + ' zamestnancov.', 'ok');
+    if (hasRootAccess) {
+      // ADMIN MODE: full folder browser
+      await loadAllFolders();
+    } else {
+      // TEACHER MODE: find only sheets accessible to this user inside root
+      await loadTeacherSheets();
+    }
 
   } catch(e) {
     document.getElementById('folderSelectTrigger').textContent = 'Chyba načítania';
-    showStatus('Chyba načítania priečinkov: ' + e.message, 'error');
+    showStatus('Chyba načítania: ' + e.message, 'error');
   }
 }
+
+async function loadAllFolders() {
+  // Full folder list for admin
+  const q = encodeURIComponent("'" + ROOT_FOLDER_ID + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false");
+  const resp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,folderColorRgb)&pageSize=200');
+  const data = await resp.json();
+  if (data.error) throw new Error(data.error.message);
+
+  const folders = (data.files || []).sort(function(a, b) {
+    return a.name.localeCompare(b.name, 'sk', { sensitivity: 'base' });
+  });
+  if (!folders.length) throw new Error('V priečinku neboli nájdené žiadne podpriečinky.');
+
+  buildFolderDropdown(folders);
+  showStatus('Načítaných ' + folders.length + ' zamestnancov.', 'ok');
+}
+
+async function loadTeacherSheets() {
+  // TEACHER MODE: search for spreadsheets shared with this user anywhere under root
+  showStatus('Hľadám vaše tabuľky…', 'loading');
+
+  const q = encodeURIComponent("'" + ROOT_FOLDER_ID + "' in parents and trashed=false");
+
+  // We cant list root, so search all spreadsheets accessible to this user
+  // that are children of root by searching Drive directly
+  const searchQ = encodeURIComponent("mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
+  const resp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + searchQ + '&fields=files(id,name,parents)&pageSize=200');
+  const data = await resp.json();
+  if (data.error) throw new Error(data.error.message);
+
+  const allSheets = data.files || [];
+
+  // We need to find sheets whose parent folder is inside ROOT_FOLDER_ID
+  // Get all parent folder IDs and check which ones are children of root
+  const parentIds = [...new Set(allSheets.map(f => f.parents && f.parents[0]).filter(Boolean))];
+
+  if (!parentIds.length) {
+    showStatus('Nenašli sa žiadne tabuľky vo vašom priečinku.', 'error');
+    document.getElementById('folderSelectTrigger').textContent = 'Žiadne tabuľky';
+    return;
+  }
+
+  // Check which parent folders are children of ROOT_FOLDER_ID
+  // by fetching their parent info
+  const folderChecks = await Promise.all(parentIds.map(async function(pid) {
+    const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + pid + '?fields=id,name,parents,folderColorRgb');
+    const d = await r.json();
+    return d;
+  }));
+
+  // Filter folders that are direct children of root
+  const myFolders = folderChecks.filter(function(f) {
+    return f.parents && f.parents.includes(ROOT_FOLDER_ID);
+  });
+
+  if (!myFolders.length) {
+    // Fallback: just show sheets directly without folder grouping
+    // Build a fake "folder" from the user's name and load sheets directly
+    showStatus('Načítavam vaše tabuľky priamo…', 'loading');
+    buildTeacherDirectMode(allSheets);
+    return;
+  }
+
+  // Build folder dropdown with just this teacher's folder(s)
+  buildFolderDropdown(myFolders);
+  showStatus('Nájdený váš priečinok.', 'ok');
+}
+
+function buildTeacherDirectMode(sheets) {
+  // Teacher has sheets but we couldn't identify the folder —
+  // show sheets directly in the sheet dropdown, skip folder step
+  const trigger = document.getElementById('folderSelectTrigger');
+  trigger.textContent = 'Môj priečinok';
+  trigger.className = 'custom-select-trigger disabled';
+
+  // Set a dummy folder value and populate sheets directly
+  document.getElementById('folderSelect').value = 'direct';
+
+  const sheetSel = document.getElementById('sheetSelect');
+  sheetSel.innerHTML = '<option value="">— Vyberte tabuľku —</option>';
+  sheets.forEach(function(s) {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name;
+    sheetSel.appendChild(opt);
+  });
+  sheetSel.disabled = false;
+  sheetSel.addEventListener('change', onSheetChange);
+  showStatus('Načítaných ' + sheets.length + ' tabuliek.', 'ok');
+}
+
+function buildFolderDropdown(folders) {
+  const dropdown = document.getElementById('folderSelectDropdown');
+  const trigger  = document.getElementById('folderSelectTrigger');
+  dropdown.innerHTML = '';
+
+  folders.forEach(function(f) {
+    const opt = document.createElement('div');
+    opt.className = 'custom-select-option';
+
+    const dot = document.createElement('span');
+    dot.className = 'folder-color-dot';
+    dot.style.background = f.folderColorRgb || '#6b6b7e';
+    opt.appendChild(dot);
+
+    const lbl = document.createElement('span');
+    lbl.textContent = f.name;
+    opt.appendChild(lbl);
+
+    opt.addEventListener('click', function() {
+      dropdown.querySelectorAll('.custom-select-option').forEach(function(o) { o.classList.remove('selected'); });
+      opt.classList.add('selected');
+      trigger.innerHTML = '';
+      trigger.appendChild(dot.cloneNode(true));
+      trigger.appendChild(document.createTextNode(' ' + f.name));
+      trigger.classList.remove('open');
+      dropdown.classList.remove('open');
+      document.getElementById('folderSelect').value = f.id;
+      onFolderChange();
+    });
+
+    dropdown.appendChild(opt);
+  });
+
+  trigger.className = 'custom-select-trigger';
+  trigger.textContent = '— Vyberte zamestnanca —';
+  trigger.onclick = function(e) {
+    e.stopPropagation();
+    trigger.classList.toggle('open');
+    dropdown.classList.toggle('open');
+  };
+
+  document.addEventListener('click', function() {
+    trigger.classList.remove('open');
+    dropdown.classList.remove('open');
+  });
+}
+
 
 async function onFolderChange() {
   const folderId = document.getElementById('folderSelect').value;
