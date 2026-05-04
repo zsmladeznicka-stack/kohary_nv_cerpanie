@@ -857,7 +857,7 @@ async function loadTeacherSheets() {
   if (data.error) throw new Error(data.error.message);
 
   const sheets = (data.files || []).filter(function(f) {
-    return f.name.startsWith('NV_20');
+    return f.name.startsWith('NV_');
   });
   if (!sheets.length) {
     document.getElementById('folderSelectTrigger').textContent = 'Žiadne tabuľky';
@@ -1200,7 +1200,10 @@ async function zapisatCerpanie() {
         newL = oldL ? oldL + ', ' + newEntry : newEntry;
       } else {
         jVal = 'NV';
-        newL = lColValue; // just the date, overwrites L
+        const selLabel = Number.isInteger(selectedVal) ? String(selectedVal) : selectedVal.toFixed(1).replace('.', ',');
+        const newEntry = lColValue + ' - ' + selLabel + ' hod.';
+        const oldL = existingL[rowNum] || '';
+        newL = oldL ? oldL + ', ' + newEntry : newEntry;
       }
 
       return {
