@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NV IČ Merítés</title>
+<style>
+  /* ---------- CONFIG NOTE ----------
+     Edit the CONFIG object in the <script> below:
+       CLIENT_ID        – your OAuth Web client ID from Google Cloud Console
+       PARENT_FOLDER_ID – parent folder containing all person-folders
+     In Cloud Console, add your GitHub Pages origin to
+     "Authorized JavaScript origins", e.g. https://USERNAME.github.io
+     Enable the Drive API and Google Sheets API for the project.
+  ---------------------------------- */
+
+  :root {
+    --bg: #0e1116;
+    --panel: #161b22;
+    --panel-2: #1c232d;
+    --line: #2a3340;
+    --ink: #e6edf3;
+    --muted: #8b97a7;
+    --accent: #4cc2a5;
+    --accent-2: #f0a868;
+    --bad: #e5707e;
+    --radius: 12px;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --sans: "Inter Tight", system-ui, -apple-system, sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background:
+      radial-gradient(900px 500px at 100% -10%, rgba(76,194,165,.10), transparent 60%),
+      radial-gradient(800px 600px at -10% 110%, rgba(240,168,104,.08), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 18px 26px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(14,17,22,.7);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .logo {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #2f7d6a);
+    display: grid; place-items: center;
+    font-weight: 700; font-family: var(--mono); color: #06120e;
+    box-shadow: 0 6px 18px rgba(76,194,165,.25);
+  }
+  h1 { font-size: 17px; margin: 0; letter-spacing: .2px; font-weight: 600; }
+  h1 small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .spacer { flex: 1; }
+
+  button {
+    font-family: var(--sans); font-size: 13px; font-weight: 600;
+    border: 1px solid var(--line); background: var(--panel-2);
+    color: var(--ink); padding: 9px 14px; border-radius: 9px;
+    cursor: pointer; transition: .15s; display: inline-flex; align-items: center; gap: 8px;
+  }
+  button:hover { border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: var(--accent); color: #06120e; border-color: transparent; }
+  button.primary:hover { filter: brightness(1.08); color: #06120e; }
+
+  main { padding: 22px 26px 60px; max-width: 1280px; margin: 0 auto; }
+
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    margin-bottom: 18px;
+  }
+  .search {
+    flex: 1; min-width: 240px;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 0 12px;
+  }
+  .search input {
+    flex: 1; background: transparent; border: 0; outline: 0;
+    color: var(--ink); font-family: var(--sans); font-size: 14px; padding: 11px 0;
+  }
+  .search svg { color: var(--muted); }
+  select {
+    background: var(--panel); border: 1px solid var(--line); color: var(--ink);
+    border-radius: 10px; padding: 11px 12px; font-family: var(--sans); font-size: 13px; outline: 0;
+  }
+
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+  .stat {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 14px 18px; min-width: 140px;
+  }
+  .stat .num { font-family: var(--mono); font-size: 24px; font-weight: 600; color: var(--accent); }
+  .stat .lbl { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  .table-wrap {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  thead th {
+    text-align: left; padding: 13px 16px; background: var(--panel-2);
+    color: var(--muted); font-weight: 600; font-size: 11.5px;
+    text-transform: uppercase; letter-spacing: .6px;
+    border-bottom: 1px solid var(--line); position: sticky; top: 73px;
+    cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  thead th:hover { color: var(--ink); }
+  thead th .arrow { color: var(--accent); margin-left: 4px; }
+  tbody td { padding: 12px 16px; border-bottom: 1px solid rgba(42,51,64,.5); vertical-align: top; }
+  tbody tr:hover { background: rgba(76,194,165,.05); }
+  tbody tr:last-child td { border-bottom: 0; }
+  .person { font-weight: 600; white-space: nowrap; }
+  .mono { font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+  .activity { color: var(--ink); }
+  td a { color: var(--accent-2); text-decoration: none; }
+  td a:hover { text-decoration: underline; }
+
+  .msg { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .msg.err { color: var(--bad); }
+  .bar {
+    height: 3px; width: 100%; background: var(--panel-2); border-radius: 3px; overflow: hidden;
+    margin-top: 14px;
+  }
+  .bar > span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s; }
+  .pill { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 26px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">IČ</div>
+  <h1>NV IČ Merítés <small>Zber riadkov s typom „IČ" zo všetkých priečinkov</small></h1>
+  <div class="spacer"></div>
+  <span class="pill" id="user"></span>
+  <button id="authBtn" class="primary">Prihlásiť cez Google</button>
+  <button id="reloadBtn" class="hidden">↻ Načítať</button>
+  <button id="signoutBtn" class="hidden">Odhlásiť</button>
+</header>
+
+<main>
+  <div id="stats" class="stats hidden">
+    <div class="stat"><div class="num" id="sRows">0</div><div class="lbl">IČ riadkov</div></div>
+    <div class="stat"><div class="num" id="sPeople">0</div><div class="lbl">Osôb s IČ</div></div>
+    <div class="stat"><div class="num" id="sFiles">0</div><div class="lbl">Súborov prehľadaných</div></div>
+    <div class="stat"><div class="num" id="sHours">0</div><div class="lbl">Σ Trvanie (h)</div></div>
+  </div>
+
+  <div id="toolbar" class="toolbar hidden">
+    <div class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="q" type="text" placeholder="Hľadať osobu alebo činnosť…" />
+    </div>
+    <select id="personFilter"><option value="">Všetky osoby</option></select>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th data-k="person">Osoba</th>
+          <th data-k="date">Dátum</th>
+          <th data-k="activity">Činnosť</th>
+          <th data-k="from">Čas od</th>
+          <th data-k="to">Čas do</th>
+          <th data-k="dur">Trvanie</th>
+          <th data-k="src">Zdroj</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div id="msg" class="msg">Prihláste sa cez Google a načítajte dáta.</div>
+    <div id="bar" class="bar hidden"><span id="barFill"></span></div>
+  </div>
+
+  <footer>Statická aplikácia · OAuth v prehliadači · žiadny server</footer>
+</main>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+/* ============================ CONFIG ============================ */
+const CONFIG = {
+  CLIENT_ID: 'PASTE_YOUR_OAUTH_WEB_CLIENT_ID_HERE',
+  PARENT_FOLDER_ID: '0B784zT_u70KHYTlkQ214d2ZWVm8',
+  TARGET_FILE_NAME: 'NV_2025_2026_ÚJ.xlsx',
+  SCOPES: 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets.readonly',
+  MATCH_VALUE: 'IČ',     // exact match on column G (Typ)
+  // 0-based source columns: A,B,C,D,E,F,G
+  COL: { date:0, activity:1, from:2, to:3, narok:4, dur:5, typ:6 }
+};
+/* =============================================================== */
+
+let tokenClient = null;
+let accessToken = null;
+let allRows = [];          // {person,date,activity,from,to,dur,src}
+let sort = { k: 'person', dir: 1 };
+
+const $ = (id) => document.getElementById(id);
+
+window.onload = () => {
+  const wait = setInterval(() => {
+    if (window.google && google.accounts && google.accounts.oauth2) {
+      clearInterval(wait);
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CONFIG.CLIENT_ID,
+        scope: CONFIG.SCOPES,
+        callback: (resp) => {
+          if (resp.error) { showError('Prihlásenie zlyhalo: ' + resp.error); return; }
+          accessToken = resp.access_token;
+          afterAuth();
+        }
+      });
+    }
+  }, 100);
+};
+
+$('authBtn').onclick = () => {
+  if (CONFIG.CLIENT_ID.startsWith('PASTE_')) {
+    showError('Najprv vlož svoj OAuth Client ID do CONFIG v index.html.');
+    return;
+  }
+  tokenClient.requestAccessToken({ prompt: 'consent' });
+};
+$('reloadBtn').onclick = () => buildList();
+$('signoutBtn').onclick = () => {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
+  accessToken = null; allRows = [];
+  $('authBtn').classList.remove('hidden');
+  $('reloadBtn').classList.add('hidden');
+  $('signoutBtn').classList.add('hidden');
+  $('stats').classList.add('hidden');
+  $('toolbar').classList.add('hidden');
+  $('rows').innerHTML = '';
+  $('user').textContent = '';
+  setMsg('Prihláste sa cez Google a načítajte dáta.');
+};
+
+function afterAuth() {
+  $('authBtn').classList.add('hidden');
+  $('reloadBtn').classList.remove('hidden');
+  $('signoutBtn').classList.remove('hidden');
+  buildList();
+}
+
+/* ---------- Drive / Sheets ---------- */
+async function api(url) {
+  const r = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error('API ' + r.status + ': ' + t.slice(0, 200));
+  }
+  return r.json();
+}
+
+async function listPersonFolders() {
+  let folders = [], pageToken = '';
+  const q = encodeURIComponent(
+    `'${CONFIG.PARENT_FOLDER_ID}' in parents and ` +
+    `mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  do {
+    const url = `https://www.googleapis.com/drive/v3/files?q=${q}` +
+      `&fields=nextPageToken,files(id,name)&pageSize=200` +
+      (pageToken ? `&pageToken=${pageToken}` : '');
+    const data = await api(url);
+    folders = folders.concat(data.files || []);
+    pageToken = data.nextPageToken || '';
+  } while (pageToken);
+  return folders;
+}
+
+async function findTargetFile(folderId) {
+  const q = encodeURIComponent(
+    `'${folderId}' in parents and name='${CONFIG.TARGET_FILE_NAME}' and trashed=false`);
+  const url = `https://www.googleapis.com/drive/v3/files?q=${q}` +
+    `&fields=files(id,name,mimeType,webViewLink)&pageSize=1`;
+  const data = await api(url);
+  return (data.files && data.files[0]) || null;
+}
+
+async function readSheetGrid(fileId) {
+  // Files are Google Sheets (Drive auto-converted the .xlsx).
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${fileId}` +
+    `?ranges=A1:G1000&fields=sheets(data(rowData(values(formattedValue))))` +
+    `&includeGridData=true`;
+  const data = await api(url);
+  const grid = data.sheets?.[0]?.data?.[0]?.rowData || [];
+  return grid.map(rd => (rd.values || []).map(c => c.formattedValue ?? ''));
+}
+
+async function buildList() {
+  setMsg('Hľadám priečinky…');
+  showBar(0);
+  $('rows').innerHTML = '';
+  allRows = [];
+  let filesScanned = 0;
+
+  try {
+    const folders = await listPersonFolders();
+    if (!folders.length) { setMsg('V nadradenom priečinku nie sú žiadne podpriečinky.'); hideBar(); return; }
+
+    for (let i = 0; i < folders.length; i++) {
+      const folder = folders[i];
+      showBar((i / folders.length) * 100, `${folder.name} (${i + 1}/${folders.length})`);
+      const file = await findTargetFile(folder.id);
+      if (!file) continue;
+      filesScanned++;
+      let grid;
+      try { grid = await readSheetGrid(file.id); }
+      catch (e) { console.warn('Read failed', folder.name, e); continue; }
+
+      for (const row of grid) {
+        const typ = String(row[CONFIG.COL.typ] ?? '').trim();
+        if (typ === CONFIG.MATCH_VALUE) {
+          allRows.push({
+            person: folder.name,
+            date: row[CONFIG.COL.date] ?? '',
+            activity: row[CONFIG.COL.activity] ?? '',
+            from: row[CONFIG.COL.from] ?? '',
+            to: row[CONFIG.COL.to] ?? '',
+            dur: row[CONFIG.COL.dur] ?? '',
+            src: file.webViewLink || ''
+          });
+        }
+      }
+    }
+
+    hideBar();
+    populatePeople();
+    updateStats(filesScanned);
+    $('stats').classList.remove('hidden');
+    $('toolbar').classList.remove('hidden');
+    render();
+    if (!allRows.length) setMsg('Žiadne riadky s typom „IČ" sa nenašli.');
+  } catch (e) {
+    hideBar();
+    showError(e.message);
+  }
+}
+
+/* ---------- UI ---------- */
+function durToHours(s) {
+  s = String(s).trim().replace(',', '.');
+  if (s.includes(':')) { const [h, m] = s.split(':'); return (+h || 0) + (+m || 0) / 60; }
+  const n = parseFloat(s); return isNaN(n) ? 0 : n;
+}
+
+function updateStats(filesScanned) {
+  $('sRows').textContent = allRows.length;
+  $('sPeople').textContent = new Set(allRows.map(r => r.person)).size;
+  $('sFiles').textContent = filesScanned;
+  const h = allRows.reduce((a, r) => a + durToHours(r.dur), 0);
+  $('sHours').textContent = (Math.round(h * 10) / 10).toString().replace('.', ',');
+}
+
+function populatePeople() {
+  const sel = $('personFilter');
+  sel.innerHTML = '<option value="">Všetky osoby</option>';
+  [...new Set(allRows.map(r => r.person))].sort((a, b) => a.localeCompare(b, 'sk'))
+    .forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; sel.appendChild(o); });
+}
+
+function filtered() {
+  const q = $('q').value.trim().toLowerCase();
+  const pf = $('personFilter').value;
+  let rows = allRows.filter(r => {
+    if (pf && r.person !== pf) return false;
+    if (q && !(r.person.toLowerCase().includes(q) || String(r.activity).toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const k = sort.k, dir = sort.dir;
+  rows.sort((a, b) => {
+    let x = a[k], y = b[k];
+    if (k === 'dur') { x = durToHours(x); y = durToHours(y); return (x - y) * dir; }
+    if (k === 'date') { return parseDate(x) - parseDate(y) ? (parseDate(x) - parseDate(y)) * dir : 0; }
+    return String(x).localeCompare(String(y), 'sk') * dir;
+  });
+  return rows;
+}
+
+function parseDate(s) {
+  const m = String(s).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : 0;
+}
+
+function render() {
+  const rows = filtered();
+  const tb = $('rows');
+  if (!rows.length) { tb.innerHTML = ''; setMsg(allRows.length ? 'Nič nezodpovedá filtru.' : 'Žiadne dáta.'); return; }
+  $('msg').classList.add('hidden');
+  tb.innerHTML = rows.map(r => `
+    <tr>
+      <td class="person">${esc(r.person)}</td>
+      <td class="mono">${esc(r.date)}</td>
+      <td class="activity">${esc(r.activity)}</td>
+      <td class="mono">${esc(r.from)}</td>
+      <td class="mono">${esc(r.to)}</td>
+      <td class="mono">${esc(r.dur)}</td>
+      <td>${r.src ? `<a href="${r.src}" target="_blank" rel="noopener">otvoriť ↗</a>` : ''}</td>
+    </tr>`).join('');
+  updateArrows();
+}
+
+function updateArrows() {
+  document.querySelectorAll('thead th').forEach(th => {
+    const k = th.dataset.k;
+    th.querySelector('.arrow')?.remove();
+    if (k === sort.k) {
+      const s = document.createElement('span');
+      s.className = 'arrow'; s.textContent = sort.dir > 0 ? '▲' : '▼';
+      th.appendChild(s);
+    }
+  });
+}
+
+document.querySelectorAll('thead th').forEach(th => {
+  th.onclick = () => {
+    const k = th.dataset.k;
+    if (sort.k === k) sort.dir *= -1; else { sort.k = k; sort.dir = 1; }
+    render();
+  };
+});
+$('q').oninput = render;
+$('personFilter').onchange = render;
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function setMsg(t) { const m = $('msg'); m.className = 'msg'; m.textContent = t; m.classList.remove('hidden'); }
+function showError(t) { const m = $('msg'); m.className = 'msg err'; m.textContent = '⚠ ' + t; m.classList.remove('hidden'); }
+function showBar(pct, label) { $('bar').classList.remove('hidden'); $('barFill').style.width = pct + '%'; if (label) setMsg(label); }
+function hideBar() { $('bar').classList.add('hidden'); }
+</script>
+</body>
+</html>
