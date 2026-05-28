@@ -13,6 +13,7 @@
      "Authorized JavaScript origins", e.g. https://USERNAME.github.io
      Enable the Drive API and Google Sheets API for the project.
   ---------------------------------- */
+  @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
   :root {
     --bg: #0e1116;
@@ -28,7 +29,6 @@
     --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
     --sans: "Inter Tight", system-ui, -apple-system, sans-serif;
   }
-  @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -71,15 +71,16 @@
   button:disabled { opacity: .45; cursor: not-allowed; }
   button.primary { background: var(--accent); color: #06120e; border-color: transparent; }
   button.primary:hover { filter: brightness(1.08); color: #06120e; }
+  button.ghost { background: transparent; }
 
-  main { padding: 22px 26px 60px; max-width: 1280px; margin: 0 auto; }
+  main { padding: 22px 26px 60px; max-width: 1180px; margin: 0 auto; }
 
   .toolbar {
     display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
     margin-bottom: 18px;
   }
   .search {
-    flex: 1; min-width: 240px;
+    flex: 1; min-width: 220px;
     display: flex; align-items: center; gap: 10px;
     background: var(--panel); border: 1px solid var(--line);
     border-radius: 10px; padding: 0 12px;
@@ -93,6 +94,7 @@
     background: var(--panel); border: 1px solid var(--line); color: var(--ink);
     border-radius: 10px; padding: 11px 12px; font-family: var(--sans); font-size: 13px; outline: 0;
   }
+  label.ctl { font-size: 12px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
 
   .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
   .stat {
@@ -102,35 +104,60 @@
   .stat .num { font-family: var(--mono); font-size: 24px; font-weight: 600; color: var(--accent); }
   .stat .lbl { font-size: 12px; color: var(--muted); margin-top: 3px; }
 
-  .table-wrap {
+  /* ----- grouped person cards ----- */
+  #groups { display: flex; flex-direction: column; gap: 12px; }
+  .card {
     background: var(--panel); border: 1px solid var(--line);
     border-radius: var(--radius); overflow: hidden;
   }
+  .card-head {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px; cursor: pointer; user-select: none;
+    transition: background .12s;
+  }
+  .card-head:hover { background: var(--panel-2); }
+  .chev {
+    width: 18px; height: 18px; flex: none; color: var(--muted);
+    transition: transform .18s;
+  }
+  .card.collapsed .chev { transform: rotate(-90deg); }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 8px; flex: none;
+    display: grid; place-items: center; font-weight: 700; font-size: 13px;
+    font-family: var(--mono); color: #06120e;
+  }
+  .pname { font-weight: 600; font-size: 15px; }
+  .badges { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+  .badge {
+    font-family: var(--mono); font-size: 12px; color: var(--muted);
+    background: var(--panel-2); border: 1px solid var(--line);
+    padding: 4px 9px; border-radius: 20px; white-space: nowrap;
+  }
+  .badge b { color: var(--accent); font-weight: 600; }
+  .badge.hrs b { color: var(--accent-2); }
+
+  .card-body { border-top: 1px solid var(--line); }
+  .card.collapsed .card-body { display: none; }
   table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   thead th {
-    text-align: left; padding: 13px 16px; background: var(--panel-2);
-    color: var(--muted); font-weight: 600; font-size: 11.5px;
-    text-transform: uppercase; letter-spacing: .6px;
-    border-bottom: 1px solid var(--line); position: sticky; top: 73px;
-    cursor: pointer; user-select: none; white-space: nowrap;
+    text-align: left; padding: 9px 16px; background: var(--panel-2);
+    color: var(--muted); font-weight: 600; font-size: 11px;
+    text-transform: uppercase; letter-spacing: .5px;
+    border-bottom: 1px solid var(--line); white-space: nowrap;
   }
-  thead th:hover { color: var(--ink); }
-  thead th .arrow { color: var(--accent); margin-left: 4px; }
-  tbody td { padding: 12px 16px; border-bottom: 1px solid rgba(42,51,64,.5); vertical-align: top; }
+  tbody td { padding: 10px 16px; border-bottom: 1px solid rgba(42,51,64,.5); vertical-align: top; }
   tbody tr:hover { background: rgba(76,194,165,.05); }
   tbody tr:last-child td { border-bottom: 0; }
-  .person { font-weight: 600; white-space: nowrap; }
   .mono { font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+  .idx { color: var(--muted); font-family: var(--mono); width: 28px; }
   .activity { color: var(--ink); }
   td a { color: var(--accent-2); text-decoration: none; }
   td a:hover { text-decoration: underline; }
+  mark { background: rgba(240,168,104,.32); color: var(--ink); border-radius: 3px; padding: 0 2px; }
 
   .msg { text-align: center; padding: 60px 20px; color: var(--muted); }
   .msg.err { color: var(--bad); }
-  .bar {
-    height: 3px; width: 100%; background: var(--panel-2); border-radius: 3px; overflow: hidden;
-    margin-top: 14px;
-  }
+  .bar { height: 3px; width: 100%; background: var(--panel-2); border-radius: 3px; overflow: hidden; margin: 14px 0; }
   .bar > span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s; }
   .pill { font-size: 11px; color: var(--muted); font-family: var(--mono); }
   footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 26px; }
@@ -140,12 +167,12 @@
 <body>
 <header>
   <div class="logo">IČ</div>
-  <h1>NV IČ Merítés <small>Zber riadkov s typom „IČ" zo všetkých priečinkov</small></h1>
+  <h1>NV IČ Merítés <small>Zoskupené podľa osoby · riadky s typom „IČ"</small></h1>
   <div class="spacer"></div>
   <span class="pill" id="user"></span>
   <button id="authBtn" class="primary">Prihlásiť cez Google</button>
   <button id="reloadBtn" class="hidden">↻ Načítať</button>
-  <button id="signoutBtn" class="hidden">Odhlásiť</button>
+  <button id="signoutBtn" class="hidden ghost">Odhlásiť</button>
 </header>
 
 <main>
@@ -162,26 +189,21 @@
       <input id="q" type="text" placeholder="Hľadať osobu alebo činnosť…" />
     </div>
     <select id="personFilter"><option value="">Všetky osoby</option></select>
+    <label class="ctl">Zoradiť:
+      <select id="groupSort">
+        <option value="name">podľa mena (A→Z)</option>
+        <option value="hours">podľa Σ hodín (najviac)</option>
+        <option value="count">podľa počtu IČ (najviac)</option>
+      </select>
+    </label>
+    <button id="expandAll" class="ghost">Rozbaliť všetko</button>
+    <button id="collapseAll" class="ghost">Zbaliť všetko</button>
+    <button id="csvBtn" class="ghost">⬇ CSV</button>
   </div>
 
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th data-k="person">Osoba</th>
-          <th data-k="date">Dátum</th>
-          <th data-k="activity">Činnosť</th>
-          <th data-k="from">Čas od</th>
-          <th data-k="to">Čas do</th>
-          <th data-k="dur">Trvanie</th>
-          <th data-k="src">Zdroj</th>
-        </tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
-    <div id="msg" class="msg">Prihláste sa cez Google a načítajte dáta.</div>
-    <div id="bar" class="bar hidden"><span id="barFill"></span></div>
-  </div>
+  <div id="bar" class="bar hidden"><span id="barFill"></span></div>
+  <div id="groups"></div>
+  <div id="msg" class="msg">Prihláste sa cez Google a načítajte dáta.</div>
 
   <footer>Statická aplikácia · OAuth v prehliadači · žiadny server</footer>
 </main>
@@ -194,16 +216,16 @@ const CONFIG = {
   PARENT_FOLDER_ID: '0B784zT_u70KHYTlkQ214d2ZWVm8',
   TARGET_FILE_NAME: 'NV_2025_2026_ÚJ.xlsx',
   SCOPES: 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets.readonly',
-  MATCH_VALUE: 'IČ',     // exact match on column G (Typ)
-  // 0-based source columns: A,B,C,D,E,F,G
+  MATCH_VALUE: 'IČ',
   COL: { date:0, activity:1, from:2, to:3, narok:4, dur:5, typ:6 }
 };
 /* =============================================================== */
 
 let tokenClient = null;
 let accessToken = null;
-let allRows = [];          // {person,date,activity,from,to,dur,src}
-let sort = { k: 'person', dir: 1 };
+let allRows = [];
+let filesScanned = 0;
+const collapsed = new Set();   // person names currently collapsed
 
 const $ = (id) => document.getElementById(id);
 
@@ -240,7 +262,7 @@ $('signoutBtn').onclick = () => {
   $('signoutBtn').classList.add('hidden');
   $('stats').classList.add('hidden');
   $('toolbar').classList.add('hidden');
-  $('rows').innerHTML = '';
+  $('groups').innerHTML = '';
   $('user').textContent = '';
   setMsg('Prihláste sa cez Google a načítajte dáta.');
 };
@@ -255,10 +277,7 @@ function afterAuth() {
 /* ---------- Drive / Sheets ---------- */
 async function api(url) {
   const r = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
-  if (!r.ok) {
-    const t = await r.text();
-    throw new Error('API ' + r.status + ': ' + t.slice(0, 200));
-  }
+  if (!r.ok) { const t = await r.text(); throw new Error('API ' + r.status + ': ' + t.slice(0, 200)); }
   return r.json();
 }
 
@@ -288,7 +307,6 @@ async function findTargetFile(folderId) {
 }
 
 async function readSheetGrid(fileId) {
-  // Files are Google Sheets (Drive auto-converted the .xlsx).
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${fileId}` +
     `?ranges=A1:G1000&fields=sheets(data(rowData(values(formattedValue))))` +
     `&includeGridData=true`;
@@ -300,9 +318,8 @@ async function readSheetGrid(fileId) {
 async function buildList() {
   setMsg('Hľadám priečinky…');
   showBar(0);
-  $('rows').innerHTML = '';
-  allRows = [];
-  let filesScanned = 0;
+  $('groups').innerHTML = '';
+  allRows = []; filesScanned = 0;
 
   try {
     const folders = await listPersonFolders();
@@ -336,7 +353,7 @@ async function buildList() {
 
     hideBar();
     populatePeople();
-    updateStats(filesScanned);
+    updateStats();
     $('stats').classList.remove('hidden');
     $('toolbar').classList.remove('hidden');
     render();
@@ -347,19 +364,38 @@ async function buildList() {
   }
 }
 
-/* ---------- UI ---------- */
+/* ---------- helpers ---------- */
 function durToHours(s) {
   s = String(s).trim().replace(',', '.');
   if (s.includes(':')) { const [h, m] = s.split(':'); return (+h || 0) + (+m || 0) / 60; }
   const n = parseFloat(s); return isNaN(n) ? 0 : n;
 }
+function fmtH(h) { return (Math.round(h * 10) / 10).toString().replace('.', ','); }
+function parseDate(s) {
+  const m = String(s).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : 0;
+}
+function initials(name) {
+  const p = name.trim().split(/\s+/);
+  return ((p[0]?.[0] || '') + (p[1]?.[0] || '')).toUpperCase();
+}
+function colorFor(name) {
+  let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return `hsl(${h} 55% 62%)`;
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+function hl(s, q) {
+  s = esc(s);
+  if (!q) return s;
+  try { return s.replace(new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'), '<mark>$1</mark>'); }
+  catch { return s; }
+}
 
-function updateStats(filesScanned) {
+function updateStats() {
   $('sRows').textContent = allRows.length;
   $('sPeople').textContent = new Set(allRows.map(r => r.person)).size;
   $('sFiles').textContent = filesScanned;
-  const h = allRows.reduce((a, r) => a + durToHours(r.dur), 0);
-  $('sHours').textContent = (Math.round(h * 10) / 10).toString().replace('.', ',');
+  $('sHours').textContent = fmtH(allRows.reduce((a, r) => a + durToHours(r.dur), 0));
 }
 
 function populatePeople() {
@@ -369,70 +405,103 @@ function populatePeople() {
     .forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; sel.appendChild(o); });
 }
 
-function filtered() {
+/* ---------- grouped render ---------- */
+function buildGroups() {
   const q = $('q').value.trim().toLowerCase();
   const pf = $('personFilter').value;
-  let rows = allRows.filter(r => {
-    if (pf && r.person !== pf) return false;
-    if (q && !(r.person.toLowerCase().includes(q) || String(r.activity).toLowerCase().includes(q))) return false;
-    return true;
+  const map = new Map();
+  for (const r of allRows) {
+    if (pf && r.person !== pf) continue;
+    if (q && !(r.person.toLowerCase().includes(q) || String(r.activity).toLowerCase().includes(q))) continue;
+    if (!map.has(r.person)) map.set(r.person, []);
+    map.get(r.person).push(r);
+  }
+  let groups = [...map.entries()].map(([person, rows]) => {
+    rows.sort((a, b) => parseDate(a.date) - parseDate(b.date));
+    return { person, rows, hours: rows.reduce((a, r) => a + durToHours(r.dur), 0) };
   });
-  const k = sort.k, dir = sort.dir;
-  rows.sort((a, b) => {
-    let x = a[k], y = b[k];
-    if (k === 'dur') { x = durToHours(x); y = durToHours(y); return (x - y) * dir; }
-    if (k === 'date') { return parseDate(x) - parseDate(y) ? (parseDate(x) - parseDate(y)) * dir : 0; }
-    return String(x).localeCompare(String(y), 'sk') * dir;
-  });
-  return rows;
-}
-
-function parseDate(s) {
-  const m = String(s).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-  return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : 0;
+  const mode = $('groupSort').value;
+  groups.sort((a, b) =>
+    mode === 'hours' ? b.hours - a.hours :
+    mode === 'count' ? b.rows.length - a.rows.length :
+    a.person.localeCompare(b.person, 'sk'));
+  return groups;
 }
 
 function render() {
-  const rows = filtered();
-  const tb = $('rows');
-  if (!rows.length) { tb.innerHTML = ''; setMsg(allRows.length ? 'Nič nezodpovedá filtru.' : 'Žiadne dáta.'); return; }
+  const groups = buildGroups();
+  const wrap = $('groups');
+  if (!groups.length) { wrap.innerHTML = ''; setMsg(allRows.length ? 'Nič nezodpovedá filtru.' : 'Žiadne dáta.'); return; }
   $('msg').classList.add('hidden');
-  tb.innerHTML = rows.map(r => `
-    <tr>
-      <td class="person">${esc(r.person)}</td>
-      <td class="mono">${esc(r.date)}</td>
-      <td class="activity">${esc(r.activity)}</td>
-      <td class="mono">${esc(r.from)}</td>
-      <td class="mono">${esc(r.to)}</td>
-      <td class="mono">${esc(r.dur)}</td>
-      <td>${r.src ? `<a href="${r.src}" target="_blank" rel="noopener">otvoriť ↗</a>` : ''}</td>
-    </tr>`).join('');
-  updateArrows();
-}
+  const q = $('q').value.trim();
 
-function updateArrows() {
-  document.querySelectorAll('thead th').forEach(th => {
-    const k = th.dataset.k;
-    th.querySelector('.arrow')?.remove();
-    if (k === sort.k) {
-      const s = document.createElement('span');
-      s.className = 'arrow'; s.textContent = sort.dir > 0 ? '▲' : '▼';
-      th.appendChild(s);
-    }
+  wrap.innerHTML = groups.map(g => {
+    const isCol = collapsed.has(g.person);
+    const body = g.rows.map((r, i) => `
+      <tr>
+        <td class="idx">${i + 1}</td>
+        <td class="mono">${esc(r.date)}</td>
+        <td class="activity">${hl(r.activity, q)}</td>
+        <td class="mono">${esc(r.from)}</td>
+        <td class="mono">${esc(r.to)}</td>
+        <td class="mono">${esc(r.dur)}</td>
+        <td>${r.src ? `<a href="${r.src}" target="_blank" rel="noopener">↗</a>` : ''}</td>
+      </tr>`).join('');
+    return `
+      <div class="card ${isCol ? 'collapsed' : ''}" data-person="${esc(g.person)}">
+        <div class="card-head" data-toggle="${esc(g.person)}">
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+          <div class="avatar" style="background:${colorFor(g.person)}">${esc(initials(g.person))}</div>
+          <span class="pname">${hl(g.person, q)}</span>
+          <div class="badges">
+            <span class="badge"><b>${g.rows.length}</b> IČ</span>
+            <span class="badge hrs"><b>${fmtH(g.hours)}</b> h</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <table>
+            <thead><tr>
+              <th>#</th><th>Dátum</th><th>Činnosť</th><th>Čas od</th><th>Čas do</th><th>Trvanie</th><th>Zdroj</th>
+            </tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }).join('');
+
+  wrap.querySelectorAll('[data-toggle]').forEach(h => {
+    h.onclick = () => {
+      const p = h.getAttribute('data-toggle');
+      if (collapsed.has(p)) collapsed.delete(p); else collapsed.add(p);
+      h.closest('.card').classList.toggle('collapsed');
+    };
   });
 }
 
-document.querySelectorAll('thead th').forEach(th => {
-  th.onclick = () => {
-    const k = th.dataset.k;
-    if (sort.k === k) sort.dir *= -1; else { sort.k = k; sort.dir = 1; }
-    render();
-  };
-});
+/* ---------- controls ---------- */
 $('q').oninput = render;
 $('personFilter').onchange = render;
+$('groupSort').onchange = render;
+$('expandAll').onclick = () => { collapsed.clear(); render(); };
+$('collapseAll').onclick = () => { buildGroups().forEach(g => collapsed.add(g.person)); render(); };
+$('csvBtn').onclick = exportCsv;
 
-function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function exportCsv() {
+  if (!allRows.length) return;
+  const groups = buildGroups();
+  const esc = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const lines = [['Osoba', 'Dátum', 'Činnosť', 'Čas od', 'Čas do', 'Trvanie'].map(esc).join(',')];
+  for (const g of groups) {
+    for (const r of g.rows) lines.push([r.person, r.date, r.activity, r.from, r.to, r.dur].map(esc).join(','));
+  }
+  const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'NV_IC_meritie.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 function setMsg(t) { const m = $('msg'); m.className = 'msg'; m.textContent = t; m.classList.remove('hidden'); }
 function showError(t) { const m = $('msg'); m.className = 'msg err'; m.textContent = '⚠ ' + t; m.classList.remove('hidden'); }
 function showBar(pct, label) { $('bar').classList.remove('hidden'); $('barFill').style.width = pct + '%'; if (label) setMsg(label); }
