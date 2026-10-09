@@ -92,6 +92,13 @@
   .primary-btn:disabled { opacity: 0.45; cursor: not-allowed; }
   .ctl-push { margin-left: auto; }
   .rule-note { flex-basis: 100%; font-size: 12px; color: var(--muted); }
+  .rule-note strong { color: var(--ink); font-weight: 500; }
+  .date-warn {
+    margin-top: 12px; padding: 10px 14px; border-radius: 6px;
+    background: var(--amber-bg); color: var(--amber); font-size: 13px; border: 1px solid #f2d39b;
+  }
+  .date-warn[hidden] { display: none; }
+  .sum-sub { font-size: 13px; color: var(--muted); }
 
   /* ── STATUS / PROGRESS ── */
   .status { margin-top: 14px; font-size: 13px; color: var(--muted); min-height: 20px; }
@@ -194,24 +201,27 @@
 
   <section class="controls" aria-label="Nastavenia kontroly">
     <div class="ctl">
-      <label class="ctl-label" for="refDate">Ku dňu</label>
+      <label class="ctl-label" for="refDate">Kontrola ku dňu</label>
       <div class="ctl-row">
-        <input type="date" id="refDate">
         <label class="check"><input type="checkbox" id="useToday" checked> Dnes</label>
+        <input type="date" id="refDate" aria-label="Iný dátum kontroly">
       </div>
     </div>
     <div class="ctl">
-      <label class="ctl-label" for="warnMonths">Upozorniť vopred</label>
+      <label class="ctl-label" for="warnMonths">Riziko prepadnutia</label>
       <div class="ctl-row">
+        <span>posledné</span>
         <input type="number" id="warnMonths" min="1" max="12" step="1" value="3">
-        <span>mes.</span>
+        <span>mes. pred prepadnutím</span>
       </div>
     </div>
     <div class="ctl ctl-push">
       <button class="primary-btn" id="scanBtn" onclick="scanAll()" disabled>Skontrolovať</button>
     </div>
-    <div class="rule-note">NV prepadá 12 mesiacov po dátume činnosti. Kontrolujú sa súbory NV_2025_2026, NV_2025_2026_ÚJ, NV_2026_2027 a všetky novšie.</div>
+    <div class="rule-note">NV prepadá 12 mesiacov po dátume činnosti. <strong>Prepadnuté</strong> = k dátumu kontroly už staršie ako 12 mesiacov. <strong>Riziko</strong> = ešte platí, ale prepadne v najbližších mesiacoch podľa nastavenia. Kontrolujú sa súbory NV_2025_2026, NV_2025_2026_ÚJ, NV_2026_2027 a všetky novšie.</div>
   </section>
+
+  <div class="date-warn" id="dateWarn" role="alert" hidden></div>
 
   <div class="status" id="status" role="status">Prihláste sa, potom kliknite na Skontrolovať.</div>
   <div class="progress" id="progress"><div id="progressBar"></div></div>
@@ -277,15 +287,24 @@ function detectFormat(rows, fileInfo) {
   return (fileInfo.isUJ || fileInfo.startYear >= 2026) ? 'new' : 'old';
 }
 
-// Returns every dated line that still has unused (approved, not yet drawn) NV hours
+// Returns every line that still has unused (approved, not yet drawn) NV hours.
+// A row with an empty date belongs to the same day as the row above it (second activity that day).
+// A row with an unreadable date (typo) also takes the date from above, with a warning.
 function extractUnused(rows, fileInfo) {
   const fmt = detectFormat(rows, fileInfo);
-  const lines = [];
+  const lines = [], undated = [];
+  let lastDate = null;
   for (let i = 4; i < rows.length; i++) {
     const r = rows[i] || [];
-    const date = parseDate(r[0]);
-    if (!date) continue;
-    let approved, used, warn = '';
+    const warns = [];
+    let date = parseDate(r[0]);
+    if (date) lastDate = date;
+    else {
+      const raw = (r[0] === undefined || r[0] === null) ? '' : String(r[0]).trim();
+      if (raw) warns.push('Nečitateľný dátum „' + raw + '“ – použitý dátum z riadku vyššie.');
+      date = lastDate;
+    }
+    let approved, used;
     if (fmt === 'old') {
       approved = parseNum(r[6]);
       used     = parseNum(r[7]);
@@ -295,16 +314,16 @@ function extractUnused(rows, fileInfo) {
       if (typ.toUpperCase() === 'NV') used = parseNum(r[10]);
       else {
         used = 0;
-        if (typ && typ !== 'Platené') warn = 'Neštandardný typ čerpania v stĺpci J: „' + typ + '“';
+        if (typ && typ !== 'Platené') warns.push('Neštandardný typ čerpania v stĺpci J: „' + typ + '“');
       }
     }
     const remaining = Math.round((approved - used) * 100) / 100;
-    if (remaining > 0.004) {
-      lines.push({ row: i + 1, date: date, activity: String(r[1] || '').trim(), remaining: remaining, warn: warn });
-    }
+    if (remaining <= 0.004) continue;
+    if (!date) { undated.push({ row: i + 1, remaining: remaining }); continue; }
+    lines.push({ row: i + 1, date: date, activity: String(r[1] || '').trim(), remaining: remaining, warn: warns.join(' ') });
   }
   const carryIn = parseNum((rows[0] || [])[10]);   // K1 = zostatok z predchádzajúcich rokov
-  return { fmt: fmt, lines: lines, carryIn: carryIn };
+  return { fmt: fmt, lines: lines, undated: undated, carryIn: carryIn };
 }
 
 function addMonths(d, n) {
@@ -357,6 +376,20 @@ function getRefDate() {
   if (!m) { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); }
   return new Date(+m[1], +m[2] - 1, +m[3]);
 }
+function isRefToday() {
+  const t = new Date();
+  return getRefDate().getTime() === new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime();
+}
+function updateDateWarn() {
+  const el = document.getElementById('dateWarn');
+  if (isRefToday()) { el.hidden = true; el.textContent = ''; return; }
+  const ref = getRefDate();
+  const future = ref > new Date();
+  el.hidden = false;
+  el.textContent = 'Pozor: kontrola nie je k dnešku, ale k ' + fmtDate(ref) + '. ' + (future
+    ? 'Ako „prepadnuté“ sa preto zobrazí aj NV, ktoré dnes ešte platí. Na kontrolu stavu k dnešku zaškrtnite Dnes.'
+    : 'Výsledky ukazujú stav k minulému dátumu. Na kontrolu stavu k dnešku zaškrtnite Dnes.');
+}
 function getWarnMonths() {
   const n = parseInt(document.getElementById('warnMonths').value, 10);
   return isNaN(n) ? 3 : Math.min(12, Math.max(1, n));
@@ -366,20 +399,18 @@ function syncTodayToggle() {
   const inp = document.getElementById('refDate');
   inp.disabled = useToday;
   if (useToday || !inp.value) inp.value = todayISO();
+  updateDateWarn();
 }
+// Only the risk window is remembered; the check date always starts at today.
 function saveSettings() {
-  try {
-    localStorage.setItem('nvExp.useToday', document.getElementById('useToday').checked ? '1' : '0');
-    localStorage.setItem('nvExp.months', String(getWarnMonths()));
-  } catch (e) { /* storage unavailable — ignore */ }
+  try { localStorage.setItem('nvExp.months', String(getWarnMonths())); } catch (e) { /* storage unavailable */ }
 }
 function loadSettings() {
   try {
-    const t = localStorage.getItem('nvExp.useToday');
     const m = localStorage.getItem('nvExp.months');
-    if (t !== null) document.getElementById('useToday').checked = (t === '1');
     if (m !== null) document.getElementById('warnMonths').value = m;
-  } catch (e) { /* storage unavailable — ignore */ }
+  } catch (e) { /* storage unavailable */ }
+  document.getElementById('useToday').checked = true;
 }
 
 // ===== AUTH =================================================
@@ -387,7 +418,7 @@ window.addEventListener('DOMContentLoaded', function () {
   loadSettings();
   syncTodayToggle();
   document.getElementById('useToday').addEventListener('change', function () { syncTodayToggle(); saveSettings(); render(); });
-  document.getElementById('refDate').addEventListener('change', render);
+  document.getElementById('refDate').addEventListener('change', function () { updateDateWarn(); render(); });
   document.getElementById('warnMonths').addEventListener('input', function () { saveSettings(); render(); });
   if (window.location.hash && window.location.hash.indexOf('access_token') !== -1) handleOAuthCallback();
 });
@@ -582,6 +613,10 @@ async function scanAll() {
           l.fileLabel = job.file.label; l.fileId = job.file.id; l.fileOrder = job.file.order;
           job.person.lines.push(l);
         });
+        res.undated.forEach(function (u) {
+          job.person.notes.push(job.file.label + ', riadok ' + u.row + ': ' + fmtH(u.remaining) +
+            ' hod. nečerpaných bez dátumu – nedá sa určiť, kedy prepadnú.');
+        });
       } catch (e) {
         errors.push(job.person.name + ' – ' + job.file.name + ': ' + e.message);
       }
@@ -646,27 +681,31 @@ function render() {
 
   const peopleWord = function (n) { return n === 1 ? 'zamestnanec' : (n >= 2 && n <= 4 ? 'zamestnanci' : 'zamestnancov'); };
 
+  const isToday = isRefToday();
   let html = '<section class="summary" aria-label="Súhrn">' +
     '<button class="sum-card expired" aria-pressed="' + (filter === 'expired') + '" onclick="setFilter(\'expired\')">' +
-      '<div class="sum-title">Prepadnuté k ' + fmtDate(ref) + '</div>' +
+      '<div class="sum-title">Prepadnuté</div>' +
+      '<div class="sum-sub">k ' + fmtDate(ref) + (isToday ? ' (dnes)' : '') + ' – staršie ako 12 mesiacov</div>' +
       '<div class="sum-hours num">' + fmtH(expH) + '<small>hod.</small></div>' +
       '<div class="sum-people">' + expP + ' ' + peopleWord(expP) + '</div></button>' +
     '<button class="sum-card soon" aria-pressed="' + (filter === 'soon') + '" onclick="setFilter(\'soon\')">' +
-      '<div class="sum-title">Prepadne do ' + fmtDate(limit) + '</div>' +
+      '<div class="sum-title">Riziko prepadnutia</div>' +
+      '<div class="sum-sub">ešte platí, prepadne do ' + fmtDate(limit) + ' (najbližšie ' + months + ' mes.)</div>' +
       '<div class="sum-hours num">' + fmtH(soonH) + '<small>hod.</small></div>' +
       '<div class="sum-people">' + soonP + ' ' + peopleWord(soonP) + '</div></button>' +
     '</section>' +
     '<div class="filter-note">' + (filter === 'all' ? 'Kliknutím na súhrn zobrazíte len jednu skupinu.' :
-      'Zobrazené: len ' + (filter === 'expired' ? 'prepadnuté' : 'čoskoro prepadajúce') + ' — kliknite znova pre všetky.') + '</div>';
+      'Zobrazené: len ' + (filter === 'expired' ? 'prepadnuté' : 'v riziku prepadnutia') + ' — kliknite znova pre všetky.') + '</div>';
 
   const visible = hits.filter(function (h) {
     return filter === 'all' || (filter === 'expired' ? h.pe > 0 : h.ps > 0);
   });
 
   if (!visible.length) {
-    html += '<div class="empty"><strong>Nič nenájdené.</strong><br>Žiadne nečerpané NV ' +
-      (filter === 'soon' ? 'neprepadne do ' + fmtDate(limit) : filter === 'expired' ? 'neprepadlo k ' + fmtDate(ref) :
-       'neprepadlo ani neprepadne do ' + fmtDate(limit)) + '.</div>';
+    html += '<div class="empty"><strong>Nič nenájdené.</strong><br>' +
+      (filter === 'soon' ? 'Žiadne nečerpané NV nie je v riziku prepadnutia do ' + fmtDate(limit) :
+       filter === 'expired' ? 'Žiadne nečerpané NV nie je k ' + fmtDate(ref) + ' prepadnuté' :
+       'Žiadne nečerpané NV nie je prepadnuté ani v riziku prepadnutia do ' + fmtDate(limit)) + '.</div>';
   }
 
   visible.forEach(function (h) {
@@ -681,14 +720,14 @@ function render() {
       '<div class="person-name"><span class="dot" style="background:' + esc(p.color) + '"></span>' + esc(p.name) + '</div>' +
       '<div class="person-totals num">' +
         (h.pe > 0 ? '<span class="t-exp">prepadnuté ' + fmtH(h.pe) + ' hod.</span>' : '') +
-        (h.ps > 0 ? '<span class="t-soon">čoskoro ' + fmtH(h.ps) + ' hod.</span>' : '') +
+        (h.ps > 0 ? '<span class="t-soon">riziko ' + fmtH(h.ps) + ' hod.</span>' : '') +
       '</div>' +
       '<div class="file-links">Otvoriť:' + links + '</div></div>';
 
     if (p.notes.length) html += '<div class="person-note">' + p.notes.map(esc).join('<br>') + '</div>';
 
     html += '<div class="table-wrap"><table><thead><tr>' +
-      '<th>Súbor</th><th>Dátum</th><th>Činnosť</th><th class="r">Zostatok</th><th>Prepadá</th><th>Stav</th>' +
+      '<th>Súbor</th><th>Dátum činnosti</th><th>Činnosť</th><th class="r">Nečerpané</th><th>Prepadá / prepadlo</th><th>Stav</th>' +
       '</tr></thead><tbody>';
     h.items.forEach(function (i) {
       if (filter !== 'all' && i.status !== filter) return;
@@ -698,7 +737,7 @@ function render() {
         '<td class="act">' + esc(i.activity || '—') + (i.warn ? '<span class="warn">⚠ ' + esc(i.warn) + '</span>' : '') + '</td>' +
         '<td class="r nowrap num">' + fmtH(i.remaining) + ' hod.</td>' +
         '<td class="nowrap num">' + fmtDate(i.exp) + '<span class="when">' + daysText(i.status, i.days) + '</span></td>' +
-        '<td><span class="badge ' + i.status + '">' + (i.status === 'expired' ? 'Prepadnuté' : 'Čoskoro') + '</span></td>' +
+        '<td><span class="badge ' + i.status + '">' + (i.status === 'expired' ? 'Prepadnuté' : 'Riziko') + '</span></td>' +
         '</tr>';
     });
     html += '</tbody></table></div></article>';
