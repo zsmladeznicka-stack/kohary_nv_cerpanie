@@ -3,357 +3,232 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NV Prehľad</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<title>NV Prehľad – prepadnutie</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:       #f5f2eb;
-    --paper:    #fdfaf4;
-    --ink:      #1a1814;
-    --muted:    #8a8070;
-    --border:   #ddd8cc;
-    --accent:   #c5401a;
-    --accent2:  #e8631f;
-    --green:    #2d7a4f;
-    --surface:  #eee9df;
-    --white:    #ffffff;
+    --paper:    #f7f8fa;
+    --surface:  #ffffff;
+    --ink:      #16202a;
+    --muted:    #5f6b76;
+    --line:     #dfe3e8;
+    --teal:     #0e7490;
+    --teal-dk:  #0b5d74;
+    --red:      #b42318;
+    --red-bg:   #fdecea;
+    --amber:    #94540a;
+    --amber-bg: #fdf3e1;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    background: var(--bg);
+    background: var(--paper);
     color: var(--ink);
-    font-family: 'DM Mono', monospace;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
     min-height: 100vh;
+    border-top: 4px solid var(--teal);
   }
+
+  .num { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
 
   /* ── HEADER ── */
-  .header {
-    background: var(--ink);
-    color: var(--bg);
-    padding: 32px 48px;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 24px;
-    flex-wrap: wrap;
-  }
+  header { padding: 28px 0 20px; }
+  .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+  .subtitle { color: var(--muted); margin-top: 2px; }
 
-  .header-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 36px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    line-height: 1;
-  }
-
-  .header-title span { color: var(--accent2); }
-
-  .header-sub {
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-top: 6px;
-  }
-
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  /* ── USER PILL ── */
-  .user-pill {
-    display: flex; align-items: center; gap: 8px;
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 6px; padding: 7px 12px;
-  }
-  .user-avatar {
-    width: 24px; height: 24px; border-radius: 50%;
-    background: var(--accent); display: flex;
-    align-items: center; justify-content: center;
-    font-size: 10px; color: white; flex-shrink: 0; overflow: hidden;
-  }
-  .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .user-name { font-size: 11px; color: rgba(245,242,235,0.85); }
-  .sign-out-btn {
-    background: none; border: none; color: var(--muted);
-    font-size: 10px; cursor: pointer; font-family: 'DM Mono', monospace;
-    transition: color 0.15s; padding: 0 0 0 4px;
-  }
-  .sign-out-btn:hover { color: var(--accent2); }
-
-  /* ── SIGN IN BUTTON ── */
   .signin-btn {
-    background: white; color: #3c3c3c;
-    border: none; border-radius: 6px;
-    font-family: 'DM Mono', monospace; font-size: 12px;
-    padding: 10px 16px; cursor: pointer;
-    display: flex; align-items: center; gap: 8px;
-    transition: opacity 0.15s;
+    background: var(--surface); color: #3c3c3c;
+    border: 1px solid var(--line); border-radius: 6px;
+    font: 500 13px 'IBM Plex Sans', sans-serif;
+    padding: 9px 14px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
   }
   .signin-btn::before {
-    content: '';
-    width: 16px; height: 16px; flex-shrink: 0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%23EA4335' d='M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z'/%3E%3Cpath fill='%234285F4' d='M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z'/%3E%3Cpath fill='%23FBBC05' d='M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-size: contain;
+    content: ''; width: 16px; height: 16px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%23EA4335' d='M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z'/%3E%3Cpath fill='%234285F4' d='M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z'/%3E%3Cpath fill='%23FBBC05' d='M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'/%3E%3C/svg%3E") no-repeat center / contain;
   }
-  .signin-btn:hover { opacity: 0.9; }
+  .signin-btn:hover { border-color: var(--teal); }
 
-  /* ── TOOLBAR ── */
-  .toolbar {
-    padding: 20px 48px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
+  .user-pill { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .user-avatar {
+    width: 28px; height: 28px; border-radius: 50%; overflow: hidden;
+    background: var(--teal); color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; flex-shrink: 0;
   }
+  .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .user-email { color: var(--muted); font-size: 12px; }
+  .link-btn { background: none; border: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; }
+  .link-btn:hover { color: var(--red); }
 
-  .fetch-btn {
-    background: var(--accent);
-    color: white; border: none;
-    font-family: 'DM Mono', monospace;
-    font-size: 11px; letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 11px 24px; border-radius: 4px;
-    cursor: pointer; transition: background 0.15s, transform 0.1s;
+  /* ── CONTROLS ── */
+  .controls {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 16px 18px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 18px 28px;
   }
-  .fetch-btn:hover:not(:disabled) { background: var(--accent2); transform: translateY(-1px); }
-  .fetch-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .ctl { display: flex; flex-direction: column; gap: 6px; }
+  .ctl-label { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .ctl-row { display: flex; align-items: center; gap: 10px; }
+  input[type=date], input[type=number] {
+    font: 14px 'IBM Plex Mono', monospace; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; background: var(--surface);
+  }
+  input[type=number] { width: 64px; }
+  input:disabled { background: var(--paper); color: var(--muted); }
+  input:focus-visible, button:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+  .check input { width: 16px; height: 16px; accent-color: var(--teal); }
 
-  .status-chip {
-    font-size: 10px; padding: 6px 12px; border-radius: 4px;
-    letter-spacing: 0.06em;
+  .primary-btn {
+    background: var(--teal); color: #fff; border: none; border-radius: 6px;
+    font: 500 14px 'IBM Plex Sans', sans-serif; padding: 9px 18px; cursor: pointer;
   }
-  .s-loading { background: var(--border); color: var(--muted); }
-  .s-ok      { background: rgba(45,122,79,0.12); color: var(--green); border: 1px solid rgba(45,122,79,0.25); }
-  .s-error   { background: rgba(197,64,26,0.1); color: var(--accent); border: 1px solid rgba(197,64,26,0.2); }
+  .primary-btn:hover:not(:disabled) { background: var(--teal-dk); }
+  .primary-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .ctl-push { margin-left: auto; }
+  .rule-note { flex-basis: 100%; font-size: 12px; color: var(--muted); }
 
-  .total-chip {
-    margin-left: auto;
-    font-family: 'Syne', sans-serif;
-    font-size: 13px; font-weight: 700;
-    color: var(--ink);
-  }
+  /* ── STATUS / PROGRESS ── */
+  .status { margin-top: 14px; font-size: 13px; color: var(--muted); min-height: 20px; }
+  .status.error { color: var(--red); }
+  .progress { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; margin-top: 8px; display: none; }
+  .progress > div { height: 100%; width: 0; background: var(--teal); transition: width 0.3s; }
 
-  .total-chip span {
-    color: var(--accent);
-    font-size: 18px;
+  /* ── SUMMARY ── */
+  .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 26px 0 8px; }
+  .sum-card {
+    text-align: left; border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+    padding: 16px 18px; cursor: pointer; font: inherit; color: inherit;
+    border-left-width: 5px;
   }
+  .sum-card.expired { border-left-color: var(--red); }
+  .sum-card.soon    { border-left-color: var(--amber); }
+  .sum-card[aria-pressed="true"].expired { background: var(--red-bg); }
+  .sum-card[aria-pressed="true"].soon    { background: var(--amber-bg); }
+  .sum-title { font-weight: 500; }
+  .sum-hours { font-size: 30px; font-weight: 500; margin-top: 4px; }
+  .sum-hours small { font-size: 14px; color: var(--muted); font-family: 'IBM Plex Sans', sans-serif; margin-left: 4px; }
+  .sum-people { color: var(--muted); font-size: 13px; }
+  .filter-note { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
 
-  /* ── MAIN ── */
-  .main { padding: 36px 48px; }
+  /* ── PEOPLE ── */
+  .person { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+  .person-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .person-name { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .person-totals { font-size: 13px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .t-exp { color: var(--red); }
+  .t-soon { color: var(--amber); }
+  .file-links { font-size: 12px; color: var(--muted); }
+  .file-links a { color: var(--teal); margin-left: 8px; }
+  .person-note { padding: 8px 16px; font-size: 12px; color: var(--muted); background: var(--paper); border-bottom: 1px solid var(--line); }
 
-  /* ── EMPTY STATE ── */
-  .empty-state {
-    text-align: center;
-    padding: 80px 40px;
-    color: var(--muted);
-  }
-  .empty-glyph {
-    font-family: 'Syne', sans-serif;
-    font-size: 64px; font-weight: 800;
-    opacity: 0.08; letter-spacing: -4px;
-    margin-bottom: 16px;
-  }
-  .empty-state p { font-size: 12px; line-height: 1.8; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 12px; font-weight: 500; color: var(--muted); padding: 8px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 8px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.r, th.r { text-align: right; }
+  td.nowrap { white-space: nowrap; }
+  .act { color: var(--ink); }
+  .warn { display: block; color: var(--amber); font-size: 12px; margin-top: 2px; }
+  .badge { display: inline-block; font-size: 12px; font-weight: 500; padding: 1px 8px; border-radius: 10px; white-space: nowrap; }
+  .badge.expired { background: var(--red-bg); color: var(--red); }
+  .badge.soon    { background: var(--amber-bg); color: var(--amber); }
+  .when { display: block; font-size: 12px; color: var(--muted); }
 
-  /* ── TABLE ── */
-  .results-wrap {
-    background: var(--paper);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-  }
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty strong { color: var(--ink); }
 
-  .results-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
+  details.errors { margin: 18px 0 40px; font-size: 13px; color: var(--muted); }
+  details.errors summary { cursor: pointer; }
+  details.errors ul { margin: 8px 0 0 20px; }
 
-  .results-table thead tr {
-    background: var(--surface);
-    border-bottom: 2px solid var(--border);
-  }
+  footer { padding: 30px 0 40px; font-size: 12px; color: var(--muted); }
 
-  .results-table th {
-    padding: 10px 20px;
-    text-align: left;
-    font-size: 9px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--muted);
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
-  .results-table th.th-right { text-align: right; }
-
-  .results-table td {
-    padding: 12px 20px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: middle;
-  }
-
-  .results-table tbody tr:last-child td { border-bottom: none; }
-  .results-table tbody tr { transition: background 0.1s; }
-  .results-table tbody tr:hover { background: var(--surface); }
-
-  .td-name {
-    font-family: 'Syne', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--ink);
-  }
-
-  .td-folder {
-    font-size: 10px;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-
-  .td-value {
-    text-align: right;
-    font-family: 'Syne', sans-serif;
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--accent);
-    white-space: nowrap;
-  }
-
-  .td-unit {
-    font-size: 10px;
-    color: var(--muted);
-    margin-left: 2px;
-  }
-
-  .td-bar-cell { width: 160px; }
-  .td-bar-wrap {
-    background: var(--border);
-    border-radius: 2px;
-    height: 6px;
-    overflow: hidden;
-  }
-  .td-bar {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 2px;
-    transition: width 0.6s ease;
-  }
-
-  .row-num {
-    color: var(--muted);
-    font-size: 10px;
-    width: 32px;
-    text-align: center;
-  }
-
-  /* ── PROGRESS ── */
-  .progress-wrap {
-    padding: 20px 48px;
-    display: none;
-  }
-  .progress-bar-outer {
-    background: var(--border);
-    border-radius: 3px;
-    height: 4px;
-    overflow: hidden;
-    margin-bottom: 6px;
-  }
-  .progress-bar-inner {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 3px;
-    transition: width 0.3s ease;
-    width: 0%;
-  }
-  .progress-label {
-    font-size: 10px;
-    color: var(--muted);
-    letter-spacing: 0.08em;
-  }
-
-  /* ── FOOTER ── */
-  .footer {
-    padding: 16px 48px;
-    font-size: 9px;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    border-top: 1px solid var(--border);
-    margin-top: 40px;
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px; }
+    .summary { grid-template-columns: 1fr; }
+    .ctl-push { margin-left: 0; }
+    th, td { padding: 8px 10px; }
   }
 
   @media print {
-    .header-right, .toolbar, .progress-wrap, .footer { display: none !important; }
-    body { background: white; }
-    .main { padding: 20px; }
-    .results-wrap { border: 1pt solid #ccc; }
-    .results-table th { background: #f0f0f0; }
-    .td-bar-cell { display: none; }
-    th.th-bar { display: none; }
+    body { border-top: none; background: #fff; font-size: 10pt; }
+    .controls, #authBox, .status, .progress, .filter-note, details.errors, footer, .file-links { display: none !important; }
+    .sum-card { break-inside: avoid; }
+    .person { break-inside: avoid; border-color: #bbb; }
+    .wrap { max-width: none; padding: 0; }
   }
+
+  @media (prefers-reduced-motion: reduce) { .progress > div { transition: none; } }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div>
-    <div class="header-title">NV <span>Prehľad</span></div>
-    <div class="header-sub">NV_2025_2026_ÚJ.xlsx · Náhradné voľno · Zostatok</div>
-  </div>
-  <div class="header-right">
-    <div id="authArea">
-      <button class="signin-btn" id="signinBtn" onclick="startSignIn()">Prihlásiť sa cez Google</button>
-    </div>
-    <div id="userArea" style="display:none">
-      <div class="user-pill">
-        <div class="user-avatar" id="userAvatar">?</div>
-        <div class="user-name" id="userName">—</div>
-        <button class="sign-out-btn" onclick="signOut()">odhlásiť</button>
+<div class="wrap">
+  <header>
+    <div class="head-row">
+      <div>
+        <h1>NV Prehľad – prepadnutie</h1>
+        <div class="subtitle">Nečerpané náhradné voľno, ktoré už prepadlo alebo čoskoro prepadne</div>
+      </div>
+      <div id="authBox">
+        <button class="signin-btn" id="signinBtn" onclick="startSignIn()">Prihlásiť sa cez Google</button>
+        <div class="user-pill" id="userPill" style="display:none">
+          <div class="user-avatar" id="userAvatar">?</div>
+          <div>
+            <div id="userName">—</div>
+            <div class="user-email" id="userEmail"></div>
+          </div>
+          <button class="link-btn" onclick="signOut()">Odhlásiť</button>
+        </div>
       </div>
     </div>
-  </div>
-</div>
+  </header>
 
-<div class="toolbar">
-  <button class="fetch-btn" id="fetchBtn" onclick="fetchAll()" disabled>Načítať všetky →</button>
-  <div id="statusChip" style="display:none"></div>
-  <div class="total-chip" id="totalChip" style="display:none"></div>
-</div>
-
-<div class="progress-wrap" id="progressWrap">
-  <div class="progress-bar-outer">
-    <div class="progress-bar-inner" id="progressBar"></div>
-  </div>
-  <div class="progress-label" id="progressLabel">Inicializujem...</div>
-</div>
-
-<div class="main">
-  <div id="content">
-    <div class="empty-state">
-      <div class="empty-glyph">NV</div>
-      <p>Prihláste sa a kliknite <strong>Načítať všetky</strong>.<br>
-      App prehľadá všetky priečinky a nájde zostatok NV.</p>
+  <section class="controls" aria-label="Nastavenia kontroly">
+    <div class="ctl">
+      <label class="ctl-label" for="refDate">Ku dňu</label>
+      <div class="ctl-row">
+        <input type="date" id="refDate">
+        <label class="check"><input type="checkbox" id="useToday" checked> Dnes</label>
+      </div>
     </div>
-  </div>
-</div>
+    <div class="ctl">
+      <label class="ctl-label" for="warnMonths">Upozorniť vopred</label>
+      <div class="ctl-row">
+        <input type="number" id="warnMonths" min="1" max="12" step="1" value="3">
+        <span>mes.</span>
+      </div>
+    </div>
+    <div class="ctl ctl-push">
+      <button class="primary-btn" id="scanBtn" onclick="scanAll()" disabled>Skontrolovať</button>
+    </div>
+    <div class="rule-note">NV prepadá 12 mesiacov po dátume činnosti. Kontrolujú sa súbory NV_2025_2026, NV_2025_2026_ÚJ, NV_2026_2027 a všetky novšie.</div>
+  </section>
 
-<div class="footer">NV Prehľad · NV_2025_2026_ÚJ.xlsx · Automaticky generovaný prehľad</div>
+  <div class="status" id="status" role="status">Prihláste sa, potom kliknite na Skontrolovať.</div>
+  <div class="progress" id="progress"><div id="progressBar"></div></div>
+
+  <main id="results"></main>
+
+  <footer id="footer"></footer>
+</div>
 
 <script>
+// ===== CONFIG ===============================================
 const ROOT_FOLDER_ID = '0B784zT_u70KHYTlkQ214d2ZWVm8';
-const TARGET_FILE    = 'NV_2025_2026_ÚJ.xlsx';
-const TARGET_TAB     = 'Náhradné voľno';
 const CLIENT_ID      = '249918391952-ppn7a4c88qa0fl47g21k2ldd3957a0c0.apps.googleusercontent.com';
-
+const NV_TAB         = 'Náhradné voľno';
+const MIN_START_YEAR = 2025;   // nikdy nečítať súbory staršie ako NV_2025_2026
+const EXPIRY_MONTHS  = 12;     // NV prepadá 12 mesiacov po dátume činnosti
+const SHEETS_PER_MIN = 55;     // limit Google Sheets API je 60 čítaní/min na používateľa
 const OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',
   'https://www.googleapis.com/auth/spreadsheets.readonly',
@@ -361,255 +236,485 @@ const OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email'
 ].join(' ');
 
-let accessToken = null;
+// ===== LOGIC-START (pure functions, no DOM) =================
+function parseNum(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  if (typeof v === 'number') return v;
+  const n = parseFloat(String(v).replace(/hod\.?/g, '').replace(/\s/g, '').replace(',', '.'));
+  return isNaN(n) ? 0 : n;
+}
 
-// ── AUTH ──────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', function() {
-  if (window.location.hash && window.location.hash.includes('access_token')) {
-    handleOAuthCallback();
+function parseDate(v) {
+  if (typeof v === 'number' && v > 30000 && v < 80000) {
+    const d = new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000);
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
   }
+  if (typeof v === 'string') {
+    const m = v.trim().match(/^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})$/);
+    if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+  }
+  return null;
+}
+
+// "NV_2025_2026_ÚJ.xlsx" -> { startYear: 2025, isUJ: true, label: "2025/26 ÚJ" }
+function parseNvFileName(name) {
+  const base = String(name).normalize('NFC').trim().replace(/\.xlsx$/i, '');
+  const m = base.match(/^NV_(\d{4})_(\d{4})(_(ÚJ|UJ))?$/i);
+  if (!m) return null;
+  const startYear = +m[1];
+  if (startYear < MIN_START_YEAR) return null;
+  const isUJ = !!m[3];
+  return { startYear, isUJ, order: startYear * 10 + (isUJ ? 5 : 0),
+           label: startYear + '/' + String(+m[2]).slice(-2) + (isUJ ? ' ÚJ' : '') };
+}
+
+// Old format (NV_2025_2026): G = Schválené, H = Čerpané zo schválených
+// New format (ÚJ, 2026_2027+): H = Schválené na čerpanie, J = Typ čerpania, K = Čerpané/platené
+function detectFormat(rows, fileInfo) {
+  const hdr = rows[3] || [];
+  if (String(hdr[7] || '').toLowerCase().includes('schválené na čerpanie')) return 'new';
+  if (String(hdr[6] || '').trim().toLowerCase() === 'schválené') return 'old';
+  return (fileInfo.isUJ || fileInfo.startYear >= 2026) ? 'new' : 'old';
+}
+
+// Returns every dated line that still has unused (approved, not yet drawn) NV hours
+function extractUnused(rows, fileInfo) {
+  const fmt = detectFormat(rows, fileInfo);
+  const lines = [];
+  for (let i = 4; i < rows.length; i++) {
+    const r = rows[i] || [];
+    const date = parseDate(r[0]);
+    if (!date) continue;
+    let approved, used, warn = '';
+    if (fmt === 'old') {
+      approved = parseNum(r[6]);
+      used     = parseNum(r[7]);
+    } else {
+      approved = parseNum(r[7]);
+      const typ = String(r[9] || '').normalize('NFC').trim();
+      if (typ.toUpperCase() === 'NV') used = parseNum(r[10]);
+      else {
+        used = 0;
+        if (typ && typ !== 'Platené') warn = 'Neštandardný typ čerpania v stĺpci J: „' + typ + '“';
+      }
+    }
+    const remaining = Math.round((approved - used) * 100) / 100;
+    if (remaining > 0.004) {
+      lines.push({ row: i + 1, date: date, activity: String(r[1] || '').trim(), remaining: remaining, warn: warn });
+    }
+  }
+  const carryIn = parseNum((rows[0] || [])[10]);   // K1 = zostatok z predchádzajúcich rokov
+  return { fmt: fmt, lines: lines, carryIn: carryIn };
+}
+
+function addMonths(d, n) {
+  const r = new Date(d.getFullYear(), d.getMonth() + n, 1);
+  const last = new Date(r.getFullYear(), r.getMonth() + 1, 0).getDate();
+  r.setDate(Math.min(d.getDate(), last));
+  return r;
+}
+
+function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
+
+// expired: line date + 12 months <= reference date
+// soon:    reference date < expiry <= reference date + warn months
+function classify(lineDate, refDate, warnMonths) {
+  const exp = addMonths(lineDate, EXPIRY_MONTHS);
+  if (exp <= refDate) return { status: 'expired', exp: exp, days: daysBetween(exp, refDate) };
+  if (exp <= addMonths(refDate, warnMonths)) return { status: 'soon', exp: exp, days: daysBetween(refDate, exp) };
+  return null;
+}
+
+function fmtH(n) {
+  const r = Math.round(n * 100) / 100;
+  return (Number.isInteger(r) ? String(r) : r.toFixed(2).replace(/0$/, '')).replace('.', ',');
+}
+function fmtDate(d) { return d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear(); }
+function daysText(status, days) {
+  if (status === 'expired') {
+    if (days === 0) return 'prepadlo dnes';
+    return 'pred ' + days + (days === 1 ? ' dňom' : ' dňami');
+  }
+  if (days === 1) return 'o 1 deň';
+  if (days >= 2 && days <= 4) return 'o ' + days + ' dni';
+  return 'o ' + days + ' dní';
+}
+// ===== LOGIC-END ============================================
+
+// ===== STATE ================================================
+let accessToken = null;
+let scanData = null;          // { people: [...], errors: [...], fileCount, scannedAt }
+let filter = 'all';           // 'all' | 'expired' | 'soon'
+
+// ===== SETTINGS =============================================
+function todayISO() {
+  const t = new Date();
+  return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+}
+function getRefDate() {
+  const v = document.getElementById('useToday').checked ? todayISO() : document.getElementById('refDate').value;
+  const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); }
+  return new Date(+m[1], +m[2] - 1, +m[3]);
+}
+function getWarnMonths() {
+  const n = parseInt(document.getElementById('warnMonths').value, 10);
+  return isNaN(n) ? 3 : Math.min(12, Math.max(1, n));
+}
+function syncTodayToggle() {
+  const useToday = document.getElementById('useToday').checked;
+  const inp = document.getElementById('refDate');
+  inp.disabled = useToday;
+  if (useToday || !inp.value) inp.value = todayISO();
+}
+function saveSettings() {
+  try {
+    localStorage.setItem('nvExp.useToday', document.getElementById('useToday').checked ? '1' : '0');
+    localStorage.setItem('nvExp.months', String(getWarnMonths()));
+  } catch (e) { /* storage unavailable — ignore */ }
+}
+function loadSettings() {
+  try {
+    const t = localStorage.getItem('nvExp.useToday');
+    const m = localStorage.getItem('nvExp.months');
+    if (t !== null) document.getElementById('useToday').checked = (t === '1');
+    if (m !== null) document.getElementById('warnMonths').value = m;
+  } catch (e) { /* storage unavailable — ignore */ }
+}
+
+// ===== AUTH =================================================
+window.addEventListener('DOMContentLoaded', function () {
+  loadSettings();
+  syncTodayToggle();
+  document.getElementById('useToday').addEventListener('change', function () { syncTodayToggle(); saveSettings(); render(); });
+  document.getElementById('refDate').addEventListener('change', render);
+  document.getElementById('warnMonths').addEventListener('input', function () { saveSettings(); render(); });
+  if (window.location.hash && window.location.hash.indexOf('access_token') !== -1) handleOAuthCallback();
 });
 
 function startSignIn() {
-  const redirectUri = window.location.origin + window.location.pathname;
   const params = new URLSearchParams({
-    client_id:     CLIENT_ID,
-    redirect_uri:  redirectUri,
+    client_id: CLIENT_ID,
+    redirect_uri: window.location.origin + window.location.pathname,
     response_type: 'token',
-    scope:         OAUTH_SCOPES,
-    prompt:        'select_account'
+    scope: OAUTH_SCOPES,
+    prompt: 'select_account'
   });
   window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
 }
 
 async function handleOAuthCallback() {
-  const hash = window.location.hash.substring(1);
-  const params = new URLSearchParams(hash);
+  const params = new URLSearchParams(window.location.hash.substring(1));
   const token = params.get('access_token');
   const error = params.get('error');
   history.replaceState(null, '', window.location.pathname);
-  if (error || !token) { showStatus('Chyba prihlásenia: ' + (error || 'žiadny token'), 'error'); return; }
+  if (error || !token) { setStatus('Chyba prihlásenia: ' + (error || 'chýba token'), true); return; }
   accessToken = token;
   try {
-    const r = await gFetch('https://www.googleapis.com/oauth2/v3/userinfo');
-    const p = await r.json();
-    showUser(p);
-  } catch(e) {
-    showUser({ name: 'Používateľ', email: '' });
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + accessToken } });
+    showUser(await r.json());
+  } catch (e) {
+    showUser({ name: 'Používateľ' });
   }
-  document.getElementById('fetchBtn').disabled = false;
-  showStatus('Prihlásený — kliknite Načítať všetky.', 'ok');
+  document.getElementById('scanBtn').disabled = false;
+  setStatus('Prihlásený. Kliknite na Skontrolovať.');
 }
 
-function showUser(profile) {
-  document.getElementById('authArea').style.display = 'none';
-  document.getElementById('userArea').style.display = 'block';
-  document.getElementById('userName').textContent = profile.name || 'Používateľ';
+function showUser(p) {
+  document.getElementById('signinBtn').style.display = 'none';
+  document.getElementById('userPill').style.display = 'flex';
+  document.getElementById('userName').textContent = p.name || 'Používateľ';
+  document.getElementById('userEmail').textContent = p.email || '';
   const av = document.getElementById('userAvatar');
-  if (profile.picture) av.innerHTML = '<img src="' + profile.picture + '" alt="">';
-  else av.textContent = (profile.name || 'U')[0].toUpperCase();
+  if (p.picture) { av.innerHTML = ''; const img = document.createElement('img'); img.src = p.picture; img.alt = ''; av.appendChild(img); }
+  else av.textContent = (p.name || 'U').charAt(0).toUpperCase();
 }
 
 function signOut() {
   if (accessToken) fetch('https://oauth2.googleapis.com/revoke?token=' + accessToken, { method: 'POST' });
   accessToken = null;
-  document.getElementById('authArea').style.display = 'block';
-  document.getElementById('userArea').style.display = 'none';
-  document.getElementById('fetchBtn').disabled = true;
-  document.getElementById('totalChip').style.display = 'none';
-  document.getElementById('content').innerHTML = '<div class="empty-state"><div class="empty-glyph">NV</div><p>Prihláste sa a kliknite Načítať všetky.</p></div>';
-  hideStatus();
+  scanData = null;
+  document.getElementById('signinBtn').style.display = '';
+  document.getElementById('userPill').style.display = 'none';
+  document.getElementById('scanBtn').disabled = true;
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('footer').textContent = '';
+  setStatus('Odhlásený.');
 }
 
-async function gFetch(url) {
-  return fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
-}
-
-function showStatus(msg, type) {
-  const el = document.getElementById('statusChip');
-  el.style.display = 'inline-block';
-  el.className = 'status-chip s-' + type;
+// ===== UI HELPERS ===========================================
+function setStatus(msg, isError) {
+  const el = document.getElementById('status');
   el.textContent = msg;
+  el.className = 'status' + (isError ? ' error' : '');
 }
-function hideStatus() { document.getElementById('statusChip').style.display = 'none'; }
-
-function setProgress(pct, label) {
-  document.getElementById('progressWrap').style.display = 'block';
-  document.getElementById('progressBar').style.width = pct + '%';
-  document.getElementById('progressLabel').textContent = label;
+function setProgress(pct) {
+  const p = document.getElementById('progress');
+  p.style.display = pct === null ? 'none' : 'block';
+  if (pct !== null) document.getElementById('progressBar').style.width = pct + '%';
 }
-function hideProgress() { document.getElementById('progressWrap').style.display = 'none'; }
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-// ── MAIN FETCH ────────────────────────────────────────
-async function fetchAll() {
-  if (!accessToken) { showStatus('Najprv sa prihláste.', 'error'); return; }
-
-  const btn = document.getElementById('fetchBtn');
-  btn.disabled = true;
-  btn.textContent = 'Načítavam...';
-  document.getElementById('totalChip').style.display = 'none';
-  showStatus('Načítavam priečinky...', 'loading');
-  setProgress(5, 'Načítavam zoznam priečinkov...');
-
-  const results = [];
-
-  try {
-    // 1. Get all subfolders of root
-    const q = encodeURIComponent("'" + ROOT_FOLDER_ID + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false");
-    const foldersResp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&orderBy=name&fields=files(id,name)&pageSize=200');
-    const foldersData = await foldersResp.json();
-    if (foldersData.error) throw new Error(foldersData.error.message);
-
-    const folders = foldersData.files || [];
-    if (!folders.length) throw new Error('Žiadne priečinky nenájdené.');
-
-    const debugLines = ['Nájdených priečinkov: ' + folders.length];
-    setProgress(10, 'Nájdených ' + folders.length + ' priečinkov. Hľadám tabuľky...');
-
-    // 2. For each folder, find file named TARGET_FILE
-    for (let fi = 0; fi < folders.length; fi++) {
-      const folder = folders[fi];
-      const pct = 10 + Math.round((fi / folders.length) * 75);
-      setProgress(pct, 'Prehľadávam: ' + folder.name + ' (' + (fi+1) + '/' + folders.length + ')');
-
-      // Search ALL files in folder (no mime filter) to catch .xlsx
-      const sq = encodeURIComponent("'" + folder.id + "' in parents and trashed=false");
-      const sheetsResp = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + sq + '&fields=files(id,name,mimeType)&pageSize=50');
-      const sheetsData = await sheetsResp.json();
-      if (sheetsData.error) { debugLines.push(folder.name + ': Drive error ' + sheetsData.error.message); continue; }
-
-      const allFiles = sheetsData.files || [];
-      debugLines.push(folder.name + ': ' + allFiles.length + ' súborov — ' + allFiles.map(function(f){return f.name;}).join(', '));
-
-      // Find target file by name
-      const sheets = allFiles.filter(function(f) { return f.name === TARGET_FILE; });
-      if (!sheets.length) { debugLines.push('  -> súbor ' + TARGET_FILE + ' NENÁJDENÝ'); continue; }
-      debugLines.push('  -> súbor nájdený: ' + sheets[0].name + ' (' + sheets[0].mimeType + ')');
-
-      // Found the sheet — read L1 and name from A1:H2
-      const sheetId = sheets[0].id;
-
-      try {
-        // Fetch L1
-        const l1Resp = await gFetch('https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent("'" + TARGET_TAB + "'!L1"));
-        const l1Data = await l1Resp.json();
-        const l1Raw = (l1Data.values && l1Data.values[0] && l1Data.values[0][0]) ? String(l1Data.values[0][0]).trim() : '';
-        const l1Val = parseFloat(l1Raw.replace(',', '.'));
-        if (isNaN(l1Val) || l1Val <= 0) continue; // skip zero or empty
-
-        // Fetch name from A1:H2
-        const nameResp = await gFetch('https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent("'" + TARGET_TAB + "'!A1:H2"));
-        const nameData = await nameResp.json();
-        let employeeName = folder.name; // fallback to folder name
-        if (nameData.values) {
-          const skipWords = ['datum','cinnost','cas','narok','meno','name','zamestnanec','employee','od','do','nv','schvalene','vyplatu'];
-          outer: for (const row of nameData.values) {
-            for (const cell of row) {
-              const c = String(cell || '').trim();
-              if (!c) continue;
-              if (skipWords.some(function(w) { return c.toLowerCase().includes(w); })) continue;
-              employeeName = c;
-              break outer;
-            }
-          }
-        }
-
-        results.push({
-          name:       employeeName,
-          folderName: folder.name,
-          value:      l1Val,
-          valueStr:   Number.isInteger(l1Val) ? String(l1Val) : l1Val.toFixed(2).replace('.', ',')
-        });
-
-      } catch(sheetErr) {
-        console.warn('Chyba pri čítaní tabuľky v ' + folder.name + ':', sheetErr);
-      }
-    }
-
-    setProgress(100, 'Hotovo.');
-
-    if (!results.length) {
-      showStatus('Žiadne záznamy s hodnotou > 0 neboli nájdené.', 'error');
-      renderDebug(debugLines);
-    } else {
-      // Sort by value descending
-      results.sort(function(a, b) { return b.value - a.value; });
-      const total = results.reduce(function(s, r) { return s + r.value; }, 0);
-      const totalStr = Number.isInteger(total) ? String(total) : total.toFixed(2).replace('.', ',');
-      showStatus('Nájdených ' + results.length + ' zamestnancov.', 'ok');
-      debugLines.push('Výsledky: ' + results.length);
-      document.getElementById('totalChip').style.display = 'block';
-      document.getElementById('totalChip').innerHTML = 'Celkom: <span>' + totalStr + ' hod.</span>';
-      renderResults(results);
-    }
-
-  } catch(e) {
-    showStatus('Chyba: ' + e.message, 'error');
-    hideProgress();
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Načítať všetky →';
-    setTimeout(hideProgress, 1500);
+// ===== API (with Sheets rate limit + retry) =================
+let sheetStamps = [];
+async function sheetsSlot() {
+  for (;;) {
+    const now = Date.now();
+    sheetStamps = sheetStamps.filter(function (t) { return now - t < 60000; });
+    if (sheetStamps.length < SHEETS_PER_MIN) { sheetStamps.push(now); return; }
+    await sleep(60000 - (now - sheetStamps[0]) + 100);
   }
 }
 
-// ── RENDER ────────────────────────────────────────────
-function renderDebug(lines) {
-  var el = document.getElementById('content');
-  var header = '<strong style="color:#e8631f">DEBUG LOG</strong><br><br>';
-  el.innerHTML = '<div style="padding:20px;font-size:11px;font-family:monospace;background:#1a1814;color:#f5f2eb;border-radius:8px;line-height:1.8">' + header + lines.map(function(l){return escHtml(l);}).join('<br>') + '</div>';
+async function apiGet(url, isSheets) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    if (isSheets) await sheetsSlot();
+    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+    if (r.status === 429 || r.status >= 500) { await sleep(Math.min(30000, 2000 * Math.pow(2, attempt))); continue; }
+    let data = {};
+    try { data = await r.json(); } catch (e) { /* empty body */ }
+    if (!r.ok) {
+      const err = new Error((data.error && data.error.message) || ('HTTP ' + r.status));
+      err.status = r.status;
+      throw err;
+    }
+    return data;
+  }
+  throw new Error('Google API je preťažené — skúste to znova o minútu.');
 }
 
-function renderEmpty() {
-  document.getElementById('content').innerHTML = '<div class="empty-state"><div class="empty-glyph">0</div><p>Žiadne záznamy s hodnotou väčšou ako 0.</p></div>';
+async function listAll(q, fields) {
+  let files = [], pageToken = '';
+  do {
+    const url = 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) +
+      '&fields=nextPageToken,files(' + fields + ')&pageSize=200' + (pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : '');
+    const data = await apiGet(url, false);
+    files = files.concat(data.files || []);
+    pageToken = data.nextPageToken || '';
+  } while (pageToken);
+  return files;
 }
 
-function renderResults(results) {
-  const maxVal = results[0].value;
-  const content = document.getElementById('content');
+async function readNvSheet(fileId) {
+  const base = 'https://sheets.googleapis.com/v4/spreadsheets/' + fileId + '/values/';
+  const opts = '?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER';
+  try {
+    return (await apiGet(base + encodeURIComponent("'" + NV_TAB + "'!A1:M1000") + opts, true)).values || [];
+  } catch (e) {
+    if (e.status !== 400) throw e;
+    // záložka sa volá inak — čítaj prvý list
+    return (await apiGet(base + encodeURIComponent('A1:M1000') + opts, true)).values || [];
+  }
+}
 
-  const wrap = document.createElement('div');
-  wrap.className = 'results-wrap';
+async function runPool(items, limit, fn) {
+  let next = 0;
+  const workers = [];
+  for (let w = 0; w < Math.min(limit, items.length); w++) {
+    workers.push((async function () {
+      while (next < items.length) { const i = next++; await fn(items[i], i); }
+    })());
+  }
+  await Promise.all(workers);
+}
 
-  const table = document.createElement('table');
-  table.className = 'results-table';
-  table.innerHTML = '<thead><tr>' +
-    '<th>#</th>' +
-    '<th>Zamestnanec</th>' +
-    '<th class="th-right">Zostatok (hod.)</th>' +
-    '<th class="th-bar">Podiel</th>' +
-    '</tr></thead>';
+// ===== SCAN =================================================
+async function scanAll() {
+  if (!accessToken) { setStatus('Najprv sa prihláste.', true); return; }
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true;
+  btn.textContent = 'Kontrolujem…';
+  document.getElementById('results').innerHTML = '';
+  setProgress(2);
 
-  const tbody = document.createElement('tbody');
+  const errors = [];
+  try {
+    // 1. Hlavný priečinok (len administrátor)
+    setStatus('Načítavam priečinky zamestnancov…');
+    try {
+      await apiGet('https://www.googleapis.com/drive/v3/files/' + ROOT_FOLDER_ID + '?fields=id', false);
+    } catch (e) {
+      throw new Error('Tento účet nemá prístup k hlavnému priečinku. Aplikácia je určená pre administrátora.');
+    }
+    const folders = (await listAll("'" + ROOT_FOLDER_ID + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false",
+      'id,name,folderColorRgb')).sort(function (a, b) { return a.name.localeCompare(b.name, 'sk', { sensitivity: 'base' }); });
+    if (!folders.length) throw new Error('V hlavnom priečinku nie sú žiadne podpriečinky.');
 
-  results.forEach(function(r, idx) {
-    const tr = document.createElement('tr');
-    const barPct = Math.round((r.value / maxVal) * 100);
+    // 2. NV súbory v každom priečinku (filtrované podľa názvu na strane klienta)
+    const people = folders.map(function (f) { return { folderId: f.id, name: f.name, color: f.folderColorRgb || '#9aa4ae', files: [], lines: [], notes: [] }; });
+    let done = 0;
+    await runPool(people, 8, async function (p) {
+      try {
+        const files = await listAll("'" + p.folderId + "' in parents and trashed=false", 'id,name,mimeType');
+        files.forEach(function (f) {
+          const info = parseNvFileName(f.name);
+          if (!info) return;
+          if (f.mimeType !== 'application/vnd.google-apps.spreadsheet') {
+            errors.push(p.name + ' – ' + f.name + ': súbor nie je Google tabuľka, nedá sa prečítať.');
+            return;
+          }
+          p.files.push(Object.assign({ id: f.id, name: f.name }, info));
+        });
+        p.files.sort(function (a, b) { return a.order - b.order; });
+      } catch (e) {
+        errors.push(p.name + ': nepodarilo sa načítať priečinok (' + e.message + ').');
+      }
+      done++;
+      setStatus('Hľadám NV súbory… ' + done + ' / ' + people.length);
+      setProgress(2 + Math.round(done / people.length * 13));
+    });
 
-    tr.innerHTML =
-      '<td class="row-num">' + (idx + 1) + '</td>' +
-      '<td>' +
-        '<div class="td-name">' + escHtml(r.name) + '</div>' +
-        '<div class="td-folder">' + escHtml(r.folderName) + '</div>' +
-      '</td>' +
-      '<td class="td-value">' + r.valueStr + '<span class="td-unit">hod.</span></td>' +
-      '<td class="td-bar-cell">' +
-        '<div class="td-bar-wrap">' +
-          '<div class="td-bar" style="width:' + barPct + '%"></div>' +
-        '</div>' +
-      '</td>';
+    // 3. Čítanie tabuliek
+    const jobs = [];
+    people.forEach(function (p) { p.files.forEach(function (f) { jobs.push({ person: p, file: f }); }); });
+    let read = 0;
+    const started = Date.now();
+    await runPool(jobs, 5, async function (job) {
+      try {
+        const rows = await readNvSheet(job.file.id);
+        const res = extractUnused(rows, job.file);
+        job.file.carryIn = res.carryIn;
+        job.file.unused = res.lines.reduce(function (s, l) { return s + l.remaining; }, 0);
+        res.lines.forEach(function (l) {
+          l.fileLabel = job.file.label; l.fileId = job.file.id; l.fileOrder = job.file.order;
+          job.person.lines.push(l);
+        });
+      } catch (e) {
+        errors.push(job.person.name + ' – ' + job.file.name + ': ' + e.message);
+      }
+      read++;
+      const left = jobs.length - read;
+      const eta = left > SHEETS_PER_MIN ? ' · zostáva cca ' + Math.ceil(left / SHEETS_PER_MIN) + ' min' : '';
+      setStatus('Čítam tabuľky… ' + read + ' / ' + jobs.length + eta);
+      setProgress(15 + Math.round(read / Math.max(1, jobs.length) * 85));
+    });
 
-    tbody.appendChild(tr);
+    // 4. Poznámka: nečerpané hodiny zo staršieho súboru, ktoré sa neprenášajú do novšieho (K1)
+    people.forEach(function (p) {
+      for (let i = 0; i < p.files.length - 1; i++) {
+        const older = p.files[i], newer = p.files[i + 1];
+        if (older.unused > 0.004 && typeof newer.carryIn === 'number' && newer.carryIn + 0.004 < older.unused) {
+          p.notes.push(fmtH(older.unused) + ' hod. nečerpaných v ' + older.label + ' nie je zahrnutých v zostatku ' +
+            newer.label + ' (bunka K1 = ' + fmtH(newer.carryIn) + ').');
+        }
+      }
+      p.lines.sort(function (a, b) { return a.date - b.date || a.fileOrder - b.fileOrder; });
+    });
+
+    scanData = { people: people, errors: errors, fileCount: jobs.length, scannedAt: new Date() };
+    setProgress(null);
+    render();
+  } catch (e) {
+    setProgress(null);
+    setStatus(e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Skontrolovať znova';
+  }
+}
+
+// ===== RENDER ===============================================
+function setFilter(f) { filter = (filter === f) ? 'all' : f; render(); }
+
+function render() {
+  if (!scanData) return;
+  const ref = getRefDate();
+  const months = getWarnMonths();
+  const limit = addMonths(ref, months);
+
+  const hits = [];
+  let expH = 0, soonH = 0, expP = 0, soonP = 0;
+  scanData.people.forEach(function (p) {
+    const items = [];
+    let pe = 0, ps = 0;
+    p.lines.forEach(function (l) {
+      const c = classify(l.date, ref, months);
+      if (!c) return;
+      items.push(Object.assign({}, l, c));
+      if (c.status === 'expired') pe += l.remaining; else ps += l.remaining;
+    });
+    if (!items.length) return;
+    expH += pe; soonH += ps;
+    if (pe > 0) expP++;
+    if (ps > 0) soonP++;
+    hits.push({ p: p, items: items, pe: pe, ps: ps, first: items.reduce(function (m, i) { return i.exp < m ? i.exp : m; }, items[0].exp) });
+  });
+  hits.sort(function (a, b) { return a.first - b.first || a.p.name.localeCompare(b.p.name, 'sk'); });
+
+  const peopleWord = function (n) { return n === 1 ? 'zamestnanec' : (n >= 2 && n <= 4 ? 'zamestnanci' : 'zamestnancov'); };
+
+  let html = '<section class="summary" aria-label="Súhrn">' +
+    '<button class="sum-card expired" aria-pressed="' + (filter === 'expired') + '" onclick="setFilter(\'expired\')">' +
+      '<div class="sum-title">Prepadnuté k ' + fmtDate(ref) + '</div>' +
+      '<div class="sum-hours num">' + fmtH(expH) + '<small>hod.</small></div>' +
+      '<div class="sum-people">' + expP + ' ' + peopleWord(expP) + '</div></button>' +
+    '<button class="sum-card soon" aria-pressed="' + (filter === 'soon') + '" onclick="setFilter(\'soon\')">' +
+      '<div class="sum-title">Prepadne do ' + fmtDate(limit) + '</div>' +
+      '<div class="sum-hours num">' + fmtH(soonH) + '<small>hod.</small></div>' +
+      '<div class="sum-people">' + soonP + ' ' + peopleWord(soonP) + '</div></button>' +
+    '</section>' +
+    '<div class="filter-note">' + (filter === 'all' ? 'Kliknutím na súhrn zobrazíte len jednu skupinu.' :
+      'Zobrazené: len ' + (filter === 'expired' ? 'prepadnuté' : 'čoskoro prepadajúce') + ' — kliknite znova pre všetky.') + '</div>';
+
+  const visible = hits.filter(function (h) {
+    return filter === 'all' || (filter === 'expired' ? h.pe > 0 : h.ps > 0);
   });
 
-  table.appendChild(tbody);
-  wrap.appendChild(table);
-  content.innerHTML = '';
-  content.appendChild(wrap);
-}
+  if (!visible.length) {
+    html += '<div class="empty"><strong>Nič nenájdené.</strong><br>Žiadne nečerpané NV ' +
+      (filter === 'soon' ? 'neprepadne do ' + fmtDate(limit) : filter === 'expired' ? 'neprepadlo k ' + fmtDate(ref) :
+       'neprepadlo ani neprepadne do ' + fmtDate(limit)) + '.</div>';
+  }
 
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  visible.forEach(function (h) {
+    const p = h.p;
+    const files = {};
+    h.items.forEach(function (i) { files[i.fileId] = i.fileLabel; });
+    const links = Object.keys(files).map(function (id) {
+      return '<a href="https://docs.google.com/spreadsheets/d/' + id + '/edit" target="_blank" rel="noopener">' + esc(files[id]) + ' ↗</a>';
+    }).join('');
+
+    html += '<article class="person"><div class="person-head">' +
+      '<div class="person-name"><span class="dot" style="background:' + esc(p.color) + '"></span>' + esc(p.name) + '</div>' +
+      '<div class="person-totals num">' +
+        (h.pe > 0 ? '<span class="t-exp">prepadnuté ' + fmtH(h.pe) + ' hod.</span>' : '') +
+        (h.ps > 0 ? '<span class="t-soon">čoskoro ' + fmtH(h.ps) + ' hod.</span>' : '') +
+      '</div>' +
+      '<div class="file-links">Otvoriť:' + links + '</div></div>';
+
+    if (p.notes.length) html += '<div class="person-note">' + p.notes.map(esc).join('<br>') + '</div>';
+
+    html += '<div class="table-wrap"><table><thead><tr>' +
+      '<th>Súbor</th><th>Dátum</th><th>Činnosť</th><th class="r">Zostatok</th><th>Prepadá</th><th>Stav</th>' +
+      '</tr></thead><tbody>';
+    h.items.forEach(function (i) {
+      if (filter !== 'all' && i.status !== filter) return;
+      html += '<tr>' +
+        '<td class="nowrap">' + esc(i.fileLabel) + '<span class="when">riadok ' + i.row + '</span></td>' +
+        '<td class="nowrap num">' + fmtDate(i.date) + '</td>' +
+        '<td class="act">' + esc(i.activity || '—') + (i.warn ? '<span class="warn">⚠ ' + esc(i.warn) + '</span>' : '') + '</td>' +
+        '<td class="r nowrap num">' + fmtH(i.remaining) + ' hod.</td>' +
+        '<td class="nowrap num">' + fmtDate(i.exp) + '<span class="when">' + daysText(i.status, i.days) + '</span></td>' +
+        '<td><span class="badge ' + i.status + '">' + (i.status === 'expired' ? 'Prepadnuté' : 'Čoskoro') + '</span></td>' +
+        '</tr>';
+    });
+    html += '</tbody></table></div></article>';
+  });
+
+  if (scanData.errors.length) {
+    html += '<details class="errors"><summary>Súbory, ktoré sa nepodarilo prečítať (' + scanData.errors.length + ')</summary><ul>' +
+      scanData.errors.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + '</ul></details>';
+  }
+
+  document.getElementById('results').innerHTML = html;
+  const t = scanData.scannedAt;
+  setStatus('Skontrolovaných ' + scanData.people.length + ' zamestnancov, ' + scanData.fileCount + ' súborov. ' +
+    'Zmena dátumu alebo počtu mesiacov sa prepočíta hneď, bez nového načítania.');
+  document.getElementById('footer').textContent = 'Údaje načítané ' + fmtDate(t) + ' o ' +
+    String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + '.';
 }
 </script>
 </body>
