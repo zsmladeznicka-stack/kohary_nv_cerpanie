@@ -149,6 +149,18 @@
   .badge.soon    { background: var(--amber-bg); color: var(--amber); }
   .when { display: block; font-size: 12px; color: var(--muted); }
 
+  .bad-notice {
+    display: block; margin: 0 0 14px; padding: 10px 14px; border-radius: 6px;
+    background: var(--amber-bg); color: var(--amber); border: 1px solid #f2d39b;
+    font-size: 13px; text-decoration: none;
+  }
+  .bad-notice:hover { text-decoration: underline; }
+  .bad { margin: 28px 0 10px; background: var(--surface); border: 1px solid #f2d39b; border-radius: 8px; overflow: hidden; }
+  .bad h2 { font-size: 16px; font-weight: 600; padding: 12px 16px 0; color: var(--amber); }
+  .bad-intro { padding: 4px 16px 10px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); }
+  .bad .why { font-size: 12px; color: var(--muted); }
+  .bad a { color: var(--teal); }
+
   .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
   .empty strong { color: var(--ink); }
 
@@ -218,7 +230,7 @@
     <div class="ctl ctl-push">
       <button class="primary-btn" id="scanBtn" onclick="scanAll()" disabled>Skontrolovať</button>
     </div>
-    <div class="rule-note">NV prepadá 12 mesiacov po dátume činnosti. <strong>Prepadnuté</strong> = k dátumu kontroly už staršie ako 12 mesiacov. <strong>Riziko</strong> = ešte platí, ale prepadne v najbližších mesiacoch podľa nastavenia. Kontrolujú sa súbory NV_2025_2026, NV_2025_2026_ÚJ, NV_2026_2027 a všetky novšie.</div>
+    <div class="rule-note">NV prepadá 12 mesiacov po dátume činnosti. <strong>Prepadnuté</strong> = k dátumu kontroly už staršie ako 12 mesiacov. <strong>Riziko</strong> = ešte platí, ale prepadne v najbližších mesiacoch podľa nastavenia. Kontrolujú sa súbory NV_2025_2026, NV_2025_2026_ÚJ, NV_2026_2027 a všetky novšie. Riadok s dátumom mimo obdobia súboru (napr. rok 2025 v súbore ÚJ) sa nezapočíta a zobrazí sa v zozname chybných dátumov.</div>
   </section>
 
   <div class="date-warn" id="dateWarn" role="alert" hidden></div>
@@ -287,22 +299,48 @@ function detectFormat(rows, fileInfo) {
   return (fileInfo.isUJ || fileInfo.startYear >= 2026) ? 'new' : 'old';
 }
 
+// Dates that can legitimately appear in a file: its school year, including the late-August
+// preparation week. ÚJ files only started in January (the mid-year change of the NV sheet).
+function fileDateRange(info) {
+  const y2 = info.startYear + 1;
+  return {
+    from: info.isUJ ? new Date(y2, 0, 1) : new Date(info.startYear, 7, 1),   // ÚJ: od 1. 1., ostatné: od 1. 8.
+    to:   new Date(y2, 7, 31)                                                // do 31. 8.
+  };
+}
+
+// Most wrong dates are a wrong year (2025 instead of 2026) — suggest the year that fits the file.
+function suggestDate(d, range) {
+  const shifts = [1, -1];
+  for (let k = 0; k < shifts.length; k++) {
+    const c = new Date(d.getFullYear() + shifts[k], d.getMonth(), d.getDate());
+    if (c >= range.from && c <= range.to) return c;
+  }
+  return null;
+}
+
 // Returns every line that still has unused (approved, not yet drawn) NV hours.
 // A row with an empty date belongs to the same day as the row above it (second activity that day).
 // A row with an unreadable date (typo) also takes the date from above, with a warning.
-function extractUnused(rows, fileInfo) {
+// A line whose date falls outside the file's period (or in the future) is a data error: it goes
+// to badDates and is NOT counted as expired or at risk.
+function extractUnused(rows, fileInfo, today) {
   const fmt = detectFormat(rows, fileInfo);
-  const lines = [], undated = [];
+  const range = fileDateRange(fileInfo);
+  const now = today || new Date();
+  const lines = [], undated = [], badDates = [];
   let lastDate = null;
   for (let i = 4; i < rows.length; i++) {
     const r = rows[i] || [];
     const warns = [];
     let date = parseDate(r[0]);
+    let inherited = false;
     if (date) lastDate = date;
     else {
       const raw = (r[0] === undefined || r[0] === null) ? '' : String(r[0]).trim();
       if (raw) warns.push('Nečitateľný dátum „' + raw + '“ – použitý dátum z riadku vyššie.');
       date = lastDate;
+      inherited = true;
     }
     let approved, used;
     if (fmt === 'old') {
@@ -318,12 +356,23 @@ function extractUnused(rows, fileInfo) {
       }
     }
     const remaining = Math.round((approved - used) * 100) / 100;
+    const activity = String(r[1] || '').trim();
+    if (date && approved > 0.004) {
+      let why = '';
+      if (date < range.from || date > range.to) why = 'mimo obdobia súboru (' + fmtDate(range.from) + ' – ' + fmtDate(range.to) + ')';
+      else if (date > now) why = 'dátum je v budúcnosti';
+      if (why) {
+        badDates.push({ row: i + 1, date: date, inherited: inherited, activity: activity,
+                        remaining: Math.max(0, remaining), why: why, suggestion: suggestDate(date, range) });
+        continue;
+      }
+    }
     if (remaining <= 0.004) continue;
     if (!date) { undated.push({ row: i + 1, remaining: remaining }); continue; }
-    lines.push({ row: i + 1, date: date, activity: String(r[1] || '').trim(), remaining: remaining, warn: warns.join(' ') });
+    lines.push({ row: i + 1, date: date, activity: activity, remaining: remaining, warn: warns.join(' ') });
   }
   const carryIn = parseNum((rows[0] || [])[10]);   // K1 = zostatok z predchádzajúcich rokov
-  return { fmt: fmt, lines: lines, undated: undated, carryIn: carryIn };
+  return { fmt: fmt, lines: lines, undated: undated, badDates: badDates, carryIn: carryIn };
 }
 
 function addMonths(d, n) {
@@ -575,7 +624,7 @@ async function scanAll() {
     if (!folders.length) throw new Error('V hlavnom priečinku nie sú žiadne podpriečinky.');
 
     // 2. NV súbory v každom priečinku (filtrované podľa názvu na strane klienta)
-    const people = folders.map(function (f) { return { folderId: f.id, name: f.name, color: f.folderColorRgb || '#9aa4ae', files: [], lines: [], notes: [] }; });
+    const people = folders.map(function (f) { return { folderId: f.id, name: f.name, color: f.folderColorRgb || '#9aa4ae', files: [], lines: [], notes: [], badDates: [] }; });
     let done = 0;
     await runPool(people, 8, async function (p) {
       try {
@@ -613,6 +662,10 @@ async function scanAll() {
           l.fileLabel = job.file.label; l.fileId = job.file.id; l.fileOrder = job.file.order;
           job.person.lines.push(l);
         });
+        res.badDates.forEach(function (b) {
+          b.fileLabel = job.file.label; b.fileId = job.file.id; b.fileOrder = job.file.order;
+          job.person.badDates.push(b);
+        });
         res.undated.forEach(function (u) {
           job.person.notes.push(job.file.label + ', riadok ' + u.row + ': ' + fmtH(u.remaining) +
             ' hod. nečerpaných bez dátumu – nedá sa určiť, kedy prepadnú.');
@@ -637,6 +690,7 @@ async function scanAll() {
         }
       }
       p.lines.sort(function (a, b) { return a.date - b.date || a.fileOrder - b.fileOrder; });
+      p.badDates.sort(function (a, b) { return a.fileOrder - b.fileOrder || a.row - b.row; });
     });
 
     scanData = { people: people, errors: errors, fileCount: jobs.length, scannedAt: new Date() };
@@ -653,6 +707,39 @@ async function scanAll() {
 
 // ===== RENDER ===============================================
 function setFilter(f) { filter = (filter === f) ? 'all' : f; render(); }
+
+function badNotice(bad) {
+  if (!bad.length) return '';
+  const hrs = bad.reduce(function (s, x) { return s + x.b.remaining; }, 0);
+  const people = {};
+  bad.forEach(function (x) { people[x.p.folderId] = 1; });
+  return '<a class="bad-notice" href="#bad-dates">⚠ ' + bad.length + ' ' + (bad.length === 1 ? 'riadok má' : (bad.length <= 4 ? 'riadky majú' : 'riadkov má')) +
+    ' chybný dátum (' + Object.keys(people).length + ' zam.)' +
+    (hrs > 0 ? ' – ' + fmtH(hrs) + ' hod. nečerpaných nie je započítaných, kým sa dátum neopraví' : '') +
+    '. Zoznam na konci stránky.</a>';
+}
+
+function badSection(bad) {
+  if (!bad.length) return '';
+  let h = '<section class="bad" id="bad-dates" aria-label="Chybné dátumy"><h2>Chybné dátumy – opraviť v tabuľke</h2>' +
+    '<p class="bad-intro">Dátum činnosti nesedí s obdobím súboru (napr. rok 2025 v súbore ÚJ, ktorý obsahuje len činnosti od januára 2026) ' +
+    'alebo je v budúcnosti. Tieto riadky sa nezapočítavajú do prepadnutých ani do rizika. Po oprave dátumu v tabuľke kliknite na Skontrolovať znova.</p>' +
+    '<div class="table-wrap"><table><thead><tr><th>Zamestnanec</th><th>Súbor</th><th>Zadaný dátum</th><th>Pravdepodobne</th>' +
+    '<th>Činnosť</th><th class="r">Nečerpané</th><th>Prečo</th></tr></thead><tbody>';
+  bad.forEach(function (x) {
+    const b = x.b;
+    h += '<tr>' +
+      '<td>' + esc(x.p.name) + '</td>' +
+      '<td class="nowrap"><a href="https://docs.google.com/spreadsheets/d/' + b.fileId + '/edit" target="_blank" rel="noopener">' +
+        esc(b.fileLabel) + ' ↗</a><span class="when">riadok ' + b.row + '</span></td>' +
+      '<td class="nowrap num">' + fmtDate(b.date) + (b.inherited ? '<span class="when">bez dátumu – z riadku vyššie</span>' : '') + '</td>' +
+      '<td class="nowrap num">' + (b.suggestion ? fmtDate(b.suggestion) : '—') + '</td>' +
+      '<td class="act">' + esc(b.activity || '—') + '</td>' +
+      '<td class="r nowrap num">' + (b.remaining > 0 ? fmtH(b.remaining) + ' hod.' : '—') + '</td>' +
+      '<td class="why">' + esc(b.why) + '</td></tr>';
+  });
+  return h + '</tbody></table></div></section>';
+}
 
 function render() {
   if (!scanData) return;
@@ -682,6 +769,8 @@ function render() {
   const peopleWord = function (n) { return n === 1 ? 'zamestnanec' : (n >= 2 && n <= 4 ? 'zamestnanci' : 'zamestnancov'); };
 
   const isToday = isRefToday();
+  const bad = [];
+  scanData.people.forEach(function (p) { p.badDates.forEach(function (b) { bad.push({ p: p, b: b }); }); });
   let html = '<section class="summary" aria-label="Súhrn">' +
     '<button class="sum-card expired" aria-pressed="' + (filter === 'expired') + '" onclick="setFilter(\'expired\')">' +
       '<div class="sum-title">Prepadnuté</div>' +
@@ -694,6 +783,7 @@ function render() {
       '<div class="sum-hours num">' + fmtH(soonH) + '<small>hod.</small></div>' +
       '<div class="sum-people">' + soonP + ' ' + peopleWord(soonP) + '</div></button>' +
     '</section>' +
+    badNotice(bad) +
     '<div class="filter-note">' + (filter === 'all' ? 'Kliknutím na súhrn zobrazíte len jednu skupinu.' :
       'Zobrazené: len ' + (filter === 'expired' ? 'prepadnuté' : 'v riziku prepadnutia') + ' — kliknite znova pre všetky.') + '</div>';
 
@@ -742,6 +832,8 @@ function render() {
     });
     html += '</tbody></table></div></article>';
   });
+
+  html += badSection(bad);
 
   if (scanData.errors.length) {
     html += '<details class="errors"><summary>Súbory, ktoré sa nepodarilo prečítať (' + scanData.errors.length + ')</summary><ul>' +
